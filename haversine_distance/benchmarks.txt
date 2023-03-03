@@ -1,0 +1,17 @@
+Python
+------
+
+Result: 10006.314495304521
+Input = 15.960548639297485 seconds
+Math = 15.628251552581787 seconds
+Total = 31.588800191879272 seconds
+Throughput = 316567.8955597295 haversines/second
+
+Rust
+----
+
+Result: 10006.314495304521
+Input = 7 seconds
+Math = 1 seconds
+Total = 9 seconds
+Throughput = 1111111.111111111 haversines/second

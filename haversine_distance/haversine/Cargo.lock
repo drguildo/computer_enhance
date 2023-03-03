@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "haversine_rust"
+name = "haversine"
 version = "0.1.0"
 dependencies = [
  "serde_json",

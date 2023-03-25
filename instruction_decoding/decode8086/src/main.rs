@@ -82,7 +82,8 @@ fn main() {
         if let Ok(instruction_type) = identify_instruction(byte) {
             match instruction_type {
                 InstructionType::Mov => {
-                    let instruction_size = decode_mov(&bytes[instruction_index..]);
+                    let instruction_size =
+                        decode_register_memory_to_from_register(&bytes[instruction_index..]);
                     instruction_index += instruction_size;
                 }
             }
@@ -131,7 +132,7 @@ fn decode_register(byte: u8, word_operation: bool) -> Result<Register, DecodeErr
     }
 }
 
-fn decode_mov(bytes: &[u8]) -> usize {
+fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
     let word_operation = (bytes[0] & 0x1) != 0;
     let reg_is_destination = (bytes[0] & 0x2) != 0;
 

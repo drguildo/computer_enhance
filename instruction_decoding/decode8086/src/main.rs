@@ -87,7 +87,7 @@ fn main() {
                 }
             }
         } else {
-            panic!("unsupported instruction");
+            panic!("unsupported instruction: {byte:b}");
         }
     }
 }

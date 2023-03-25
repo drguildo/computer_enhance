@@ -76,14 +76,14 @@ fn main() {
 
     println!("bits 16");
 
-    let mut i = 0;
-    while i < bytes.len() {
-        let byte = bytes[i];
+    let mut instruction_index = 0;
+    while instruction_index < bytes.len() {
+        let byte = bytes[instruction_index];
         if let Ok(instruction_type) = identify_instruction(byte) {
             match instruction_type {
                 InstructionType::Mov => {
-                    decode_mov(&bytes[i..i + 2]);
-                    i += 2;
+                    let instruction_size = decode_mov(&bytes[instruction_index..]);
+                    instruction_index += instruction_size;
                 }
             }
         } else {
@@ -131,7 +131,7 @@ fn decode_register(byte: u8, word_operation: bool) -> Result<Register, DecodeErr
     }
 }
 
-fn decode_mov(bytes: &[u8]) {
+fn decode_mov(bytes: &[u8]) -> usize {
     let word_operation = (bytes[0] & 0x1) != 0;
     let reg_is_destination = (bytes[0] & 0x2) != 0;
 
@@ -148,15 +148,18 @@ fn decode_mov(bytes: &[u8]) {
                 "mov {},{}",
                 register_field.to_string(),
                 rm_field.to_string()
-            )
+            );
+            return 2;
         } else {
             println!(
                 "mov {},{}",
                 rm_field.to_string(),
                 register_field.to_string()
-            )
+            );
+            return 2;
         }
     } else {
-        eprintln!("memory operations not supported")
+        eprintln!("memory operations not supported");
+        return 2;
     }
 }

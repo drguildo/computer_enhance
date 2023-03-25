@@ -94,7 +94,7 @@ fn main() {
 }
 
 fn identify_instruction(byte: u8) -> Result<InstructionType, DecodeError> {
-    if (byte & 0xFC) == 0x88 {
+    if (byte & 0b11111100) == 0b10001000 {
         return Ok(InstructionType::Mov);
     }
     Err(DecodeError::InvalidInstruction)

@@ -1,6 +1,7 @@
 #[derive(Debug)]
 enum InstructionType {
     MovRegisterMemoryToFromRegister,
+    MovImmediateToRegister,
 }
 
 #[derive(Debug)]
@@ -80,13 +81,16 @@ fn main() {
     while instruction_index < bytes.len() {
         let byte = bytes[instruction_index];
         if let Ok(instruction_type) = identify_instruction(byte) {
-            match instruction_type {
+            let remaining_bytes = &bytes[instruction_index..];
+            let instruction_size = match instruction_type {
                 InstructionType::MovRegisterMemoryToFromRegister => {
-                    let instruction_size =
-                        decode_register_memory_to_from_register(&bytes[instruction_index..]);
-                    instruction_index += instruction_size;
+                    decode_register_memory_to_from_register(remaining_bytes)
                 }
-            }
+                InstructionType::MovImmediateToRegister => {
+                    decode_immediate_to_register(remaining_bytes)
+                }
+            };
+            instruction_index += instruction_size;
         } else {
             panic!("unsupported instruction: {byte:b}");
         }
@@ -96,6 +100,9 @@ fn main() {
 fn identify_instruction(byte: u8) -> Result<InstructionType, DecodeError> {
     if (byte & 0b11111100) == 0b10001000 {
         return Ok(InstructionType::MovRegisterMemoryToFromRegister);
+    }
+    if (byte & 0b11110000) == 0b10110000 {
+        return Ok(InstructionType::MovImmediateToRegister);
     }
     Err(DecodeError::InvalidInstruction)
 }
@@ -132,6 +139,12 @@ fn decode_register(byte: u8, word_operation: bool) -> Result<Register, DecodeErr
     }
 }
 
+fn bytes_to_wide(a: u8, b: u8) -> u16 {
+    let mut n = a as u16;
+    n = ((b as u16) << 8) | n;
+    n
+}
+
 fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
     let word_operation = (bytes[0] & 0x1) != 0;
     let reg_is_destination = (bytes[0] & 0x2) != 0;
@@ -161,6 +174,24 @@ fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
         }
     } else {
         eprintln!("memory operations not supported");
+        return 2;
+    }
+}
+
+fn decode_immediate_to_register(bytes: &[u8]) -> usize {
+    let wide_field = (bytes[0] & 0x8) != 0;
+    let register_field =
+        decode_register(bytes[0] & 0x7, wide_field).expect("failed to decode register field");
+
+    if wide_field {
+        println!(
+            "mov {},{}",
+            register_field.to_string(),
+            bytes_to_wide(bytes[1], bytes[2])
+        );
+        return 3;
+    } else {
+        println!("mov {},{}", register_field.to_string(), bytes[1]);
         return 2;
     }
 }

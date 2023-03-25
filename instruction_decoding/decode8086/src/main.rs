@@ -1,6 +1,6 @@
 #[derive(Debug)]
 enum InstructionType {
-    Mov,
+    MovRegisterMemoryToFromRegister,
 }
 
 #[derive(Debug)]
@@ -81,7 +81,7 @@ fn main() {
         let byte = bytes[instruction_index];
         if let Ok(instruction_type) = identify_instruction(byte) {
             match instruction_type {
-                InstructionType::Mov => {
+                InstructionType::MovRegisterMemoryToFromRegister => {
                     let instruction_size =
                         decode_register_memory_to_from_register(&bytes[instruction_index..]);
                     instruction_index += instruction_size;
@@ -95,7 +95,7 @@ fn main() {
 
 fn identify_instruction(byte: u8) -> Result<InstructionType, DecodeError> {
     if (byte & 0b11111100) == 0b10001000 {
-        return Ok(InstructionType::Mov);
+        return Ok(InstructionType::MovRegisterMemoryToFromRegister);
     }
     Err(DecodeError::InvalidInstruction)
 }

@@ -139,6 +139,20 @@ fn decode_register(byte: u8, word_operation: bool) -> Result<Register, DecodeErr
     }
 }
 
+fn decode_effective_address(rm: u8) -> String {
+    match rm {
+        0x0 => "bx + si".to_string(),
+        0x1 => "bx + di".to_string(),
+        0x2 => "bp + si".to_string(),
+        0x3 => "bp + di".to_string(),
+        0x4 => "si".to_string(),
+        0x5 => "di".to_string(),
+        0x6 => "bp".to_string(),
+        0x7 => "bx".to_string(),
+        _ => panic!("invalid rm value"),
+    }
+}
+
 fn bytes_to_wide(a: u8, b: u8) -> u16 {
     let mut n = a as u16;
     n = ((b as u16) << 8) | n;
@@ -153,28 +167,60 @@ fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
     let register_field = decode_register((bytes[1] & 0x38) >> 3, word_operation)
         .expect("failed to decode register field");
 
-    if let Mode::RegisterMode = mode_field {
-        let rm_field =
-            decode_register(bytes[1] & 0x7, word_operation).expect("failed to decode r/m field");
-
-        if reg_is_destination {
-            println!(
-                "mov {},{}",
-                register_field.to_string(),
-                rm_field.to_string()
-            );
-            return 2;
-        } else {
-            println!(
-                "mov {},{}",
-                rm_field.to_string(),
-                register_field.to_string()
-            );
+    match mode_field {
+        Mode::MemoryModeNoDisplacement => {
+            println!("MemoryModeNoDisplacement: {:b} {:b}", bytes[0], bytes[1]);
+            if reg_is_destination {
+                println!(
+                    "mov {},[{}]",
+                    register_field.to_string(),
+                    decode_effective_address(bytes[1] & 0x7)
+                );
+            } else {
+                println!(
+                    "mov [{}],{}",
+                    decode_effective_address(bytes[1] & 0x7),
+                    register_field.to_string()
+                );
+            }
             return 2;
         }
-    } else {
-        eprintln!("memory operations not supported");
-        return 2;
+        Mode::MemoryMode8BitDisplacement => {
+            println!(
+                "MemoryMode8BitDisplacement: {:b} {:b} {:b}",
+                bytes[0], bytes[1], bytes[2]
+            );
+            let displacement = bytes[2];
+            return 3;
+        }
+        Mode::MemoryMode16BitDisplacement => {
+            println!(
+                "MemoryMode16BitDisplacement: {:b} {:b} {:b} {:b}",
+                bytes[0], bytes[1], bytes[2], bytes[3]
+            );
+            let displacement = u16::from_be_bytes([bytes[2], bytes[3]]);
+            return 4;
+        }
+        Mode::RegisterMode => {
+            let rm_field = decode_register(bytes[1] & 0x7, word_operation)
+                .expect("failed to decode r/m field");
+
+            if reg_is_destination {
+                println!(
+                    "mov {},{}",
+                    register_field.to_string(),
+                    rm_field.to_string()
+                );
+                return 2;
+            } else {
+                println!(
+                    "mov {},{}",
+                    rm_field.to_string(),
+                    register_field.to_string()
+                );
+                return 2;
+            }
+        }
     }
 }
 

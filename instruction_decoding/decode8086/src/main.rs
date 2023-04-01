@@ -139,18 +139,30 @@ fn decode_register(byte: u8, word_operation: bool) -> Result<Register, DecodeErr
     }
 }
 
-fn decode_effective_address(rm: u8) -> String {
+fn decode_effective_address(rm: u8, displacement: Option<u16>) -> String {
+    let mut s = String::from("[");
+
     match rm {
-        0x0 => "bx + si".to_string(),
-        0x1 => "bx + di".to_string(),
-        0x2 => "bp + si".to_string(),
-        0x3 => "bp + di".to_string(),
-        0x4 => "si".to_string(),
-        0x5 => "di".to_string(),
-        0x6 => "bp".to_string(),
-        0x7 => "bx".to_string(),
+        0x0 => s.push_str("bx + si"),
+        0x1 => s.push_str("bx + di"),
+        0x2 => s.push_str("bp + si"),
+        0x3 => s.push_str("bp + di"),
+        0x4 => s.push_str("si"),
+        0x5 => s.push_str("di"),
+        0x6 => s.push_str("bp"),
+        0x7 => s.push_str("bx"),
         _ => panic!("invalid rm value"),
     }
+
+    if let Some(displacement) = displacement {
+        if displacement != 0 {
+            s.push_str(&format!(" + {}", displacement));
+        }
+    }
+
+    s.push_str("]");
+
+    return s;
 }
 
 fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
@@ -163,45 +175,53 @@ fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
 
     match mode_field {
         Mode::MemoryModeNoDisplacement => {
-            println!(
-                "MemoryModeNoDisplacement: {} {}",
-                byte_to_string(bytes[0]),
-                byte_to_string(bytes[1])
-            );
             if reg_is_destination {
                 println!(
-                    "mov {},[{}]",
+                    "mov {},{}",
                     register_field.to_string(),
-                    decode_effective_address(bytes[1] & 0x7)
+                    decode_effective_address(bytes[1] & 0x7, None)
                 );
             } else {
                 println!(
-                    "mov [{}],{}",
-                    decode_effective_address(bytes[1] & 0x7),
+                    "mov {},{}",
+                    decode_effective_address(bytes[1] & 0x7, None),
                     register_field.to_string()
                 );
             }
             return 2;
         }
         Mode::MemoryMode8BitDisplacement => {
-            println!(
-                "MemoryMode8BitDisplacement: {} {} {}",
-                byte_to_string(bytes[0]),
-                byte_to_string(bytes[1]),
-                byte_to_string(bytes[2])
-            );
             let displacement = bytes[2];
+            if reg_is_destination {
+                println!(
+                    "mov {},{}",
+                    register_field.to_string(),
+                    decode_effective_address(bytes[1] & 0x7, Some(displacement as u16))
+                );
+            } else {
+                println!(
+                    "mov {},{}",
+                    decode_effective_address(bytes[1] & 0x7, Some(displacement as u16)),
+                    register_field.to_string()
+                );
+            }
             return 3;
         }
         Mode::MemoryMode16BitDisplacement => {
-            println!(
-                "MemoryMode16BitDisplacement: {} {} {} {}",
-                byte_to_string(bytes[0]),
-                byte_to_string(bytes[1]),
-                byte_to_string(bytes[2]),
-                byte_to_string(bytes[3])
-            );
-            let displacement = u16::from_be_bytes([bytes[2], bytes[3]]);
+            let displacement = u16::from_be_bytes([bytes[3], bytes[2]]);
+            if reg_is_destination {
+                println!(
+                    "mov {},{}",
+                    register_field.to_string(),
+                    decode_effective_address(bytes[1] & 0x7, Some(displacement))
+                );
+            } else {
+                println!(
+                    "mov {},{}",
+                    decode_effective_address(bytes[1] & 0x7, Some(displacement)),
+                    register_field.to_string()
+                );
+            }
             return 4;
         }
         Mode::RegisterMode => {

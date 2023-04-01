@@ -153,12 +153,6 @@ fn decode_effective_address(rm: u8) -> String {
     }
 }
 
-fn bytes_to_wide(a: u8, b: u8) -> u16 {
-    let mut n = a as u16;
-    n = ((b as u16) << 8) | n;
-    n
-}
-
 fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
     let word_operation = (bytes[0] & 0x1) != 0;
     let reg_is_destination = (bytes[0] & 0x2) != 0;
@@ -242,7 +236,7 @@ fn decode_immediate_to_register(bytes: &[u8]) -> usize {
         println!(
             "mov {},{}",
             register_field.to_string(),
-            bytes_to_wide(bytes[1], bytes[2])
+            u16::from_be_bytes([bytes[2], bytes[1]])
         );
         return 3;
     } else {

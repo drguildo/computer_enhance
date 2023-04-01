@@ -169,7 +169,11 @@ fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
 
     match mode_field {
         Mode::MemoryModeNoDisplacement => {
-            println!("MemoryModeNoDisplacement: {:b} {:b}", bytes[0], bytes[1]);
+            println!(
+                "MemoryModeNoDisplacement: {} {}",
+                byte_to_string(bytes[0]),
+                byte_to_string(bytes[1])
+            );
             if reg_is_destination {
                 println!(
                     "mov {},[{}]",
@@ -187,16 +191,21 @@ fn decode_register_memory_to_from_register(bytes: &[u8]) -> usize {
         }
         Mode::MemoryMode8BitDisplacement => {
             println!(
-                "MemoryMode8BitDisplacement: {:b} {:b} {:b}",
-                bytes[0], bytes[1], bytes[2]
+                "MemoryMode8BitDisplacement: {} {} {}",
+                byte_to_string(bytes[0]),
+                byte_to_string(bytes[1]),
+                byte_to_string(bytes[2])
             );
             let displacement = bytes[2];
             return 3;
         }
         Mode::MemoryMode16BitDisplacement => {
             println!(
-                "MemoryMode16BitDisplacement: {:b} {:b} {:b} {:b}",
-                bytes[0], bytes[1], bytes[2], bytes[3]
+                "MemoryMode16BitDisplacement: {} {} {} {}",
+                byte_to_string(bytes[0]),
+                byte_to_string(bytes[1]),
+                byte_to_string(bytes[2]),
+                byte_to_string(bytes[3])
             );
             let displacement = u16::from_be_bytes([bytes[2], bytes[3]]);
             return 4;
@@ -240,4 +249,8 @@ fn decode_immediate_to_register(bytes: &[u8]) -> usize {
         println!("mov {},{}", register_field.to_string(), bytes[1]);
         return 2;
     }
+}
+
+fn byte_to_string(byte: u8) -> String {
+    format!("{:#010b}", byte)
 }

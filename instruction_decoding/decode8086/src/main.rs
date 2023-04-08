@@ -264,7 +264,3 @@ fn decode_immediate_to_register(bytes: &[u8]) -> usize {
         return 2;
     }
 }
-
-fn byte_to_string(byte: u8) -> String {
-    format!("{:#010b}", byte)
-}

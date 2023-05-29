@@ -5,6 +5,17 @@ enum InstructionType {
     AddRegisterMemoryWithRegisterToEither,
 }
 
+impl std::fmt::Display for InstructionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            InstructionType::MovRegisterMemoryToFromRegister => "mov",
+            InstructionType::MovImmediateToRegister => "mov",
+            InstructionType::AddRegisterMemoryWithRegisterToEither => "add",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 #[derive(Debug)]
 enum Mode {
     MemoryModeNoDisplacement,
@@ -131,7 +142,9 @@ fn main() {
         if let Ok(instruction_type) = identify_instruction(byte) {
             let remaining_bytes = &bytes[instruction_index..];
             let instruction_size = match instruction_type {
-                InstructionType::MovRegisterMemoryToFromRegister => decode_mov(remaining_bytes),
+                InstructionType::MovRegisterMemoryToFromRegister => {
+                    decode_reg_memory_and_register_to_either(instruction_type, remaining_bytes)
+                }
                 InstructionType::MovImmediateToRegister => {
                     decode_mov_immediate_to_register(remaining_bytes)
                 }
@@ -336,17 +349,26 @@ fn decode_register(register_byte: u8, word_operation: bool) -> Result<RegisterNa
     }
 }
 
-fn decode_mov(bytes: &[u8]) -> usize {
+fn decode_reg_memory_and_register_to_either(
+    instruction_type: InstructionType,
+    bytes: &[u8],
+) -> usize {
     let word_operation = (bytes[0] & 0x1) != 0;
     let reg_is_destination = (bytes[0] & 0x2) != 0;
 
     let operands = decode_operands(bytes, word_operation).expect("failed to decode operands");
 
     if reg_is_destination {
-        println!("mov {}, {}", operands.register, operands.register_memory);
+        println!(
+            "{} {}, {}",
+            instruction_type, operands.register, operands.register_memory
+        );
         return operands.instruction_length;
     } else {
-        println!("mov {}, {}", operands.register_memory, operands.register);
+        println!(
+            "{} {}, {}",
+            instruction_type, operands.register_memory, operands.register
+        );
         return operands.instruction_length;
     }
 }

@@ -146,7 +146,7 @@ fn main() {
                     decode_reg_memory_and_register_to_either(instruction_type, remaining_bytes)
                 }
                 InstructionType::MovImmediateToRegister => {
-                    decode_mov_immediate_to_register(remaining_bytes)
+                    decode_mov_immediate_to_register(instruction_type, remaining_bytes)
                 }
                 InstructionType::AddRegisterMemoryWithRegisterToEither => todo!(),
             };
@@ -373,7 +373,7 @@ fn decode_reg_memory_and_register_to_either(
     }
 }
 
-fn decode_mov_immediate_to_register(bytes: &[u8]) -> usize {
+fn decode_mov_immediate_to_register(instruction_type: InstructionType, bytes: &[u8]) -> usize {
     let word_operation = (bytes[0] & 0x8) != 0;
 
     let register =
@@ -384,7 +384,7 @@ fn decode_mov_immediate_to_register(bytes: &[u8]) -> usize {
         bytes[1] as u16
     };
 
-    println!("mov {}, {}", register, displacement);
+    println!("{} {}, {}", instruction_type, register, displacement);
 
     if word_operation {
         3

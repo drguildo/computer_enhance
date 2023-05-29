@@ -340,7 +340,7 @@ fn decode_mov(bytes: &[u8]) -> usize {
     let word_operation = (bytes[0] & 0x1) != 0;
     let reg_is_destination = (bytes[0] & 0x2) != 0;
 
-    let operands = decode_operands(bytes, word_operation).expect("failed to decoded operands");
+    let operands = decode_operands(bytes, word_operation).expect("failed to decode operands");
 
     if reg_is_destination {
         println!("mov {}, {}", operands.register, operands.register_memory);

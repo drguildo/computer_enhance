@@ -1,8 +1,10 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum InstructionType {
     MovRegisterMemoryToFromRegister,
     MovImmediateToRegister,
-    AddRegisterMemoryWithRegisterToEither,
+    MovImmediateToRegisterMemory,
+    AddRegisterMemoryToFromRegister,
+    AddImmediateToRegisterMemory,
 }
 
 impl std::fmt::Display for InstructionType {
@@ -10,7 +12,9 @@ impl std::fmt::Display for InstructionType {
         let s = match self {
             InstructionType::MovRegisterMemoryToFromRegister => "mov",
             InstructionType::MovImmediateToRegister => "mov",
-            InstructionType::AddRegisterMemoryWithRegisterToEither => "add",
+            InstructionType::MovImmediateToRegisterMemory => "mov",
+            InstructionType::AddRegisterMemoryToFromRegister => "add",
+            InstructionType::AddImmediateToRegisterMemory => "add",
         };
         write!(f, "{}", s)
     }
@@ -109,10 +113,17 @@ impl std::fmt::Display for RegisterMemory {
 }
 
 #[derive(Debug)]
-struct Operands {
+struct RegMemoryWithRegisterToEitherOperands {
     instruction_length: usize,
     register: RegisterName,
     register_memory: RegisterMemory,
+}
+
+#[derive(Debug)]
+struct ImmediateToRegisterMemoryOperands {
+    instruction_length: usize,
+    register_memory: RegisterMemory,
+    immediate: u16,
 }
 
 #[derive(Debug)]
@@ -120,6 +131,7 @@ enum DecodeError {
     InvalidInstruction,
     InvalidMode,
     InvalidRegister,
+    InvalidImmediateToRegisterInstruction,
 }
 
 fn main() {
@@ -138,71 +150,162 @@ fn main() {
 
     let mut instruction_index = 0;
     while instruction_index < bytes.len() {
-        let byte = bytes[instruction_index];
-        if let Ok(instruction_type) = identify_instruction(byte) {
+        if let Ok(instruction_type) = identify_instruction(&bytes[instruction_index..]) {
             let remaining_bytes = &bytes[instruction_index..];
             let instruction_size = match instruction_type {
-                InstructionType::MovRegisterMemoryToFromRegister => {
+                InstructionType::MovRegisterMemoryToFromRegister
+                | InstructionType::AddRegisterMemoryToFromRegister => {
                     decode_reg_memory_and_register_to_either(instruction_type, remaining_bytes)
                 }
-                InstructionType::MovImmediateToRegister => {
-                    decode_mov_immediate_to_register(instruction_type, remaining_bytes)
+                InstructionType::MovImmediateToRegisterMemory => {
+                    decode_immediate_to_register_memory(instruction_type, remaining_bytes)
                 }
-                InstructionType::AddRegisterMemoryWithRegisterToEither => todo!(),
+                InstructionType::MovImmediateToRegister => {
+                    decode_immediate_to_register(instruction_type, remaining_bytes)
+                }
+                InstructionType::AddImmediateToRegisterMemory => {
+                    decode_immediate_to_register_memory(instruction_type, remaining_bytes)
+                }
             };
             instruction_index += instruction_size;
         } else {
-            panic!("unsupported instruction: {byte:#010b}");
+            panic!("unsupported instruction: {:#010b}", bytes[0]);
         }
     }
 }
 
-fn identify_instruction(byte: u8) -> Result<InstructionType, DecodeError> {
-    if (byte & 0b11111100) == 0b10001000 {
+fn identify_instruction(bytes: &[u8]) -> Result<InstructionType, DecodeError> {
+    let instruction = bytes[0];
+    if (instruction & 0b11111100) == 0b10000000 {
+        return identify_immediate_to_register_instruction(bytes[1]);
+    }
+    if (instruction & 0b11111100) == 0b10001000 {
         return Ok(InstructionType::MovRegisterMemoryToFromRegister);
     }
-    if (byte & 0b11110000) == 0b10110000 {
+    if (instruction & 0b11110000) == 0b10110000 {
         return Ok(InstructionType::MovImmediateToRegister);
     }
-    if (byte & 0b11111100) == 0b00000000 {
-        return Ok(InstructionType::AddRegisterMemoryWithRegisterToEither);
+    if (instruction & 0b11111100) == 0b00000000 {
+        return Ok(InstructionType::AddRegisterMemoryToFromRegister);
     }
     Err(DecodeError::InvalidInstruction)
 }
 
-fn decode_operands(
+fn identify_immediate_to_register_instruction(byte: u8) -> Result<InstructionType, DecodeError> {
+    let instruction = (byte & 0b00111000) >> 2;
+    match instruction {
+        0x0 => Ok(InstructionType::AddImmediateToRegisterMemory),
+        _ => Err(DecodeError::InvalidImmediateToRegisterInstruction),
+    }
+}
+
+fn decode_reg_memory_with_register_to_either_operands(
     instruction_stream: &[u8],
     word_operation: bool,
-) -> Result<Operands, DecodeError> {
+) -> Result<RegMemoryWithRegisterToEitherOperands, DecodeError> {
     let operands_byte = instruction_stream[1];
 
     let register = decode_register((operands_byte & 0x38) >> 3, word_operation)?;
 
+    let mode = decode_mod(operands_byte >> 6)?;
+
     let instruction_length: usize;
     let mut displacement: u16 = 0;
-    let mode = match operands_byte >> 6 {
-        0x0 => {
-            instruction_length = 2;
-            Mode::MemoryModeNoDisplacement
-        }
-        0x1 => {
+    match mode {
+        Mode::MemoryModeNoDisplacement | Mode::RegisterMode => instruction_length = 2,
+        Mode::MemoryMode8BitDisplacement => {
             instruction_length = 3;
             displacement = instruction_stream[2] as u16;
-            Mode::MemoryMode8BitDisplacement
         }
-        0x2 => {
+        Mode::MemoryMode16BitDisplacement => {
             instruction_length = 4;
             displacement = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
-            Mode::MemoryMode16BitDisplacement
         }
-        0x3 => {
-            instruction_length = 2;
-            Mode::RegisterMode
+    }
+
+    let register_memory =
+        decode_register_memory(operands_byte & 0x7, mode, displacement, word_operation)?;
+
+    Ok(RegMemoryWithRegisterToEitherOperands {
+        instruction_length,
+        register,
+        register_memory,
+    })
+}
+
+fn decode_immediate_to_register_memory_operands(
+    instruction_stream: &[u8],
+    sign_extension: bool,
+    word_operation: bool,
+) -> Result<ImmediateToRegisterMemoryOperands, DecodeError> {
+    let operands_byte = instruction_stream[1];
+    let word_immediate = !sign_extension && word_operation;
+
+    let mode = decode_mod(operands_byte >> 6)?;
+
+    let instruction_length: usize;
+    let mut displacement: u16 = 0;
+    let immediate: u16;
+    match mode {
+        Mode::MemoryModeNoDisplacement | Mode::RegisterMode => {
+            if word_immediate {
+                instruction_length = 4;
+                immediate = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+            } else {
+                instruction_length = 3;
+                immediate = instruction_stream[2] as u16;
+            }
         }
+        Mode::MemoryMode8BitDisplacement => {
+            displacement = instruction_stream[2] as u16;
+            if word_immediate {
+                instruction_length = 5;
+                immediate = u16::from_be_bytes([instruction_stream[4], instruction_stream[3]]);
+            } else {
+                instruction_length = 4;
+                immediate = instruction_stream[3] as u16;
+            }
+        }
+        Mode::MemoryMode16BitDisplacement => {
+            displacement = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+            if word_immediate {
+                instruction_length = 6;
+                immediate = u16::from_be_bytes([instruction_stream[5], instruction_stream[4]]);
+            } else {
+                instruction_length = 5;
+                immediate = instruction_stream[4] as u16;
+            }
+        }
+    }
+
+    let register_memory =
+        decode_register_memory(operands_byte & 0x7, mode, displacement, word_operation)?;
+
+    Ok(ImmediateToRegisterMemoryOperands {
+        instruction_length,
+        register_memory,
+        immediate,
+    })
+}
+
+fn decode_mod(mod_byte: u8) -> Result<Mode, DecodeError> {
+    let mode = match mod_byte {
+        0x0 => Mode::MemoryModeNoDisplacement,
+        0x1 => Mode::MemoryMode8BitDisplacement,
+        0x2 => Mode::MemoryMode16BitDisplacement,
+        0x3 => Mode::RegisterMode,
         _ => return Err(DecodeError::InvalidMode),
     };
+    Ok(mode)
+}
 
-    let register_memory = match (operands_byte & 0x7, mode) {
+fn decode_register_memory(
+    register_memory_byte: u8,
+    mode: Mode,
+    displacement: u16,
+    word_operation: bool,
+) -> Result<RegisterMemory, DecodeError> {
+    let register_memory = match (register_memory_byte, mode) {
         (0x0, Mode::MemoryMode8BitDisplacement) | (0x0, Mode::MemoryMode16BitDisplacement) => {
             RegisterMemory::RegisterAddressOffsetDisplacement(
                 RegisterName::BX,
@@ -319,12 +422,7 @@ fn decode_operands(
 
         (_, _) => return Err(DecodeError::InvalidInstruction),
     };
-
-    Ok(Operands {
-        instruction_length,
-        register,
-        register_memory,
-    })
+    Ok(register_memory)
 }
 
 fn decode_register(register_byte: u8, word_operation: bool) -> Result<RegisterName, DecodeError> {
@@ -356,35 +454,52 @@ fn decode_reg_memory_and_register_to_either(
     let word_operation = (bytes[0] & 0x1) != 0;
     let reg_is_destination = (bytes[0] & 0x2) != 0;
 
-    let operands = decode_operands(bytes, word_operation).expect("failed to decode operands");
+    let operands = decode_reg_memory_with_register_to_either_operands(bytes, word_operation)
+        .expect("failed to decode operands");
 
     if reg_is_destination {
         println!(
             "{} {}, {}",
             instruction_type, operands.register, operands.register_memory
         );
-        return operands.instruction_length;
     } else {
         println!(
             "{} {}, {}",
             instruction_type, operands.register_memory, operands.register
         );
-        return operands.instruction_length;
     }
+
+    return operands.instruction_length;
 }
 
-fn decode_mov_immediate_to_register(instruction_type: InstructionType, bytes: &[u8]) -> usize {
+fn decode_immediate_to_register_memory(instruction_type: InstructionType, bytes: &[u8]) -> usize {
+    let word_operation = (bytes[0] & 0x1) != 0;
+    let sign_extension = (bytes[0] & 0x2) != 0;
+
+    let operands =
+        decode_immediate_to_register_memory_operands(bytes, sign_extension, word_operation)
+            .expect("failed to decode operands");
+
+    println!(
+        "{} {}, {}",
+        instruction_type, operands.register_memory, operands.immediate
+    );
+
+    operands.instruction_length
+}
+
+fn decode_immediate_to_register(instruction_type: InstructionType, bytes: &[u8]) -> usize {
     let word_operation = (bytes[0] & 0x8) != 0;
 
     let register =
         decode_register(bytes[0] & 7, word_operation).expect("failed to decode register");
-    let displacement = if word_operation {
+    let data = if word_operation {
         u16::from_be_bytes([bytes[2], bytes[1]])
     } else {
         bytes[1] as u16
     };
 
-    println!("{} {}, {}", instruction_type, register, displacement);
+    println!("{} {}, {}", instruction_type, register, data);
 
     if word_operation {
         3

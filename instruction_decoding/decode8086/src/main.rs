@@ -138,7 +138,7 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let path = args.first().expect("failed to get path to binary");
 
-    let bytes = std::fs::read(path).expect("failed to read file");
+    let instruction_stream = std::fs::read(path).expect("failed to read file");
 
     if let Some(filename) = std::path::Path::new(path).file_name() {
         if let Some(filename_string) = filename.to_str() {
@@ -149,9 +149,10 @@ fn main() {
     println!("bits 16");
 
     let mut instruction_index = 0;
-    while instruction_index < bytes.len() {
-        if let Ok(instruction_type) = identify_instruction(&bytes[instruction_index..]) {
-            let remaining_bytes = &bytes[instruction_index..];
+    while instruction_index < instruction_stream.len() {
+        if let Ok(instruction_type) = identify_instruction(&instruction_stream[instruction_index..])
+        {
+            let remaining_bytes = &instruction_stream[instruction_index..];
             let instruction_size = match instruction_type {
                 InstructionType::MovRegisterMemoryToFromRegister
                 | InstructionType::AddRegisterMemoryToFromRegister => {
@@ -169,7 +170,10 @@ fn main() {
             };
             instruction_index += instruction_size;
         } else {
-            panic!("unsupported instruction: {:#010b}", bytes[0]);
+            panic!(
+                "unsupported instruction {:#010b} at offset {}",
+                instruction_stream[instruction_index], instruction_index
+            );
         }
     }
 }

@@ -5,6 +5,7 @@ enum InstructionType {
     MovImmediateToRegisterMemory,
     AddRegisterMemoryToFromRegister,
     AddImmediateToRegisterMemory,
+    AddImmediateToAccumulator,
 }
 
 impl std::fmt::Display for InstructionType {
@@ -15,6 +16,7 @@ impl std::fmt::Display for InstructionType {
             InstructionType::MovImmediateToRegisterMemory => "mov",
             InstructionType::AddRegisterMemoryToFromRegister => "add",
             InstructionType::AddImmediateToRegisterMemory => "add",
+            InstructionType::AddImmediateToAccumulator => "add",
         };
         write!(f, "{}", s)
     }
@@ -167,6 +169,9 @@ fn main() {
                 InstructionType::AddImmediateToRegisterMemory => {
                     decode_immediate_to_register_memory(instruction_type, remaining_bytes)
                 }
+                InstructionType::AddImmediateToAccumulator => {
+                    decode_immediate_to_accumulator(instruction_type, remaining_bytes)
+                }
             };
             instruction_index += instruction_size;
         } else {
@@ -191,6 +196,9 @@ fn identify_instruction(bytes: &[u8]) -> Result<InstructionType, DecodeError> {
     }
     if (instruction & 0b11111100) == 0b00000000 {
         return Ok(InstructionType::AddRegisterMemoryToFromRegister);
+    }
+    if (instruction & 0b11111100) == 0b00000100 {
+        return Ok(InstructionType::AddImmediateToAccumulator);
     }
     Err(DecodeError::InvalidInstruction)
 }
@@ -504,6 +512,33 @@ fn decode_immediate_to_register(instruction_type: InstructionType, bytes: &[u8])
     };
 
     println!("{} {}, {}", instruction_type, register, data);
+
+    if word_operation {
+        3
+    } else {
+        2
+    }
+}
+
+fn decode_immediate_to_accumulator(instruction_type: InstructionType, bytes: &[u8]) -> usize {
+    let word_operation = (bytes[0] & 0x1) != 0;
+
+    let data = if word_operation {
+        u16::from_be_bytes([bytes[2], bytes[1]])
+    } else {
+        bytes[1] as u16
+    };
+
+    println!(
+        "{} {}, {}",
+        instruction_type,
+        if word_operation {
+            RegisterName::AX
+        } else {
+            RegisterName::AL
+        },
+        data
+    );
 
     if word_operation {
         3

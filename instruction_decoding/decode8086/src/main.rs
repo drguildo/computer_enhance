@@ -418,7 +418,7 @@ fn decode_register_memory(
         (0x7, Mode::MemoryMode8BitDisplacement) | (0x7, Mode::MemoryMode16BitDisplacement) => {
             RegisterMemory::RegisterAddressDisplacement(RegisterName::BX, displacement)
         }
-        (0x7, Mode::MemoryModeNoDisplacement) => RegisterMemory::Register(RegisterName::BX),
+        (0x7, Mode::MemoryModeNoDisplacement) => RegisterMemory::RegisterAddress(RegisterName::BX),
         (0x7, Mode::RegisterMode) => {
             if word_operation {
                 RegisterMemory::Register(RegisterName::DI)

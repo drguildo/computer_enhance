@@ -2,7 +2,6 @@
 enum InstructionType {
     MovRegisterMemoryToFromRegister,
     MovImmediateToRegister,
-    MovImmediateToRegisterMemory,
     AddRegisterMemoryToFromRegister,
     AddImmediateToRegisterMemory,
     AddImmediateToAccumulator,
@@ -13,7 +12,6 @@ impl std::fmt::Display for InstructionType {
         let s = match self {
             InstructionType::MovRegisterMemoryToFromRegister => "mov",
             InstructionType::MovImmediateToRegister => "mov",
-            InstructionType::MovImmediateToRegisterMemory => "mov",
             InstructionType::AddRegisterMemoryToFromRegister => "add",
             InstructionType::AddImmediateToRegisterMemory => "add",
             InstructionType::AddImmediateToAccumulator => "add",
@@ -159,9 +157,6 @@ fn main() {
                 InstructionType::MovRegisterMemoryToFromRegister
                 | InstructionType::AddRegisterMemoryToFromRegister => {
                     decode_reg_memory_and_register_to_either(instruction_type, remaining_bytes)
-                }
-                InstructionType::MovImmediateToRegisterMemory => {
-                    decode_immediate_to_register_memory(instruction_type, remaining_bytes)
                 }
                 InstructionType::MovImmediateToRegister => {
                     decode_immediate_to_register(instruction_type, remaining_bytes)

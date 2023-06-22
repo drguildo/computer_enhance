@@ -516,8 +516,11 @@ fn decode_immediate_to_register_memory(instruction_type: InstructionType, bytes:
             .expect("failed to decode operands");
 
     println!(
-        "{} {}, {}",
-        instruction_type, operands.register_memory, operands.immediate
+        "{} {} {}, {}",
+        instruction_type,
+        if word_operation { "word" } else { "byte" },
+        operands.register_memory,
+        operands.immediate
     );
 
     operands.instruction_length

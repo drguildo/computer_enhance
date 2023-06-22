@@ -199,7 +199,7 @@ fn identify_instruction(bytes: &[u8]) -> Result<InstructionType, DecodeError> {
 }
 
 fn identify_immediate_to_register_instruction(byte: u8) -> Result<InstructionType, DecodeError> {
-    let instruction = (byte & 0b00111000) >> 2;
+    let instruction = (byte & 0b00111000) >> 3;
     match instruction {
         0x0 => Ok(InstructionType::AddImmediateToRegisterMemory),
         _ => Err(DecodeError::InvalidImmediateToRegisterInstruction),

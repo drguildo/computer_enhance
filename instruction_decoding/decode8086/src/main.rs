@@ -2,9 +2,14 @@
 enum InstructionType {
     MovRegisterMemoryToFromRegister,
     MovImmediateToRegister,
+
     AddRegisterMemoryToFromRegister,
     AddImmediateToRegisterMemory,
     AddImmediateToAccumulator,
+
+    SubRegisterMemoryToFromRegister,
+    SubImmediateToRegisterMemory,
+    SubImmediateFromAccumulator,
 }
 
 impl std::fmt::Display for InstructionType {
@@ -12,9 +17,14 @@ impl std::fmt::Display for InstructionType {
         let s = match self {
             InstructionType::MovRegisterMemoryToFromRegister => "mov",
             InstructionType::MovImmediateToRegister => "mov",
+
             InstructionType::AddRegisterMemoryToFromRegister => "add",
             InstructionType::AddImmediateToRegisterMemory => "add",
             InstructionType::AddImmediateToAccumulator => "add",
+
+            InstructionType::SubRegisterMemoryToFromRegister => "sub",
+            InstructionType::SubImmediateToRegisterMemory => "sub",
+            InstructionType::SubImmediateFromAccumulator => "sub",
         };
         write!(f, "{}", s)
     }
@@ -155,7 +165,8 @@ fn main() {
             let remaining_bytes = &instruction_stream[instruction_index..];
             let instruction_size = match instruction_type {
                 InstructionType::MovRegisterMemoryToFromRegister
-                | InstructionType::AddRegisterMemoryToFromRegister => {
+                | InstructionType::AddRegisterMemoryToFromRegister
+                | InstructionType::SubRegisterMemoryToFromRegister => {
                     decode_reg_memory_and_register_to_either(instruction_type, remaining_bytes)
                 }
                 InstructionType::MovImmediateToRegister => {
@@ -165,6 +176,13 @@ fn main() {
                     decode_immediate_to_register_memory(instruction_type, remaining_bytes)
                 }
                 InstructionType::AddImmediateToAccumulator => {
+                    decode_immediate_to_accumulator(instruction_type, remaining_bytes)
+                }
+
+                InstructionType::SubImmediateToRegisterMemory => {
+                    decode_immediate_to_register_memory(instruction_type, remaining_bytes)
+                }
+                InstructionType::SubImmediateFromAccumulator => {
                     decode_immediate_to_accumulator(instruction_type, remaining_bytes)
                 }
             };
@@ -189,12 +207,21 @@ fn identify_instruction(bytes: &[u8]) -> Result<InstructionType, DecodeError> {
     if (instruction & 0b11110000) == 0b10110000 {
         return Ok(InstructionType::MovImmediateToRegister);
     }
+
     if (instruction & 0b11111100) == 0b00000000 {
         return Ok(InstructionType::AddRegisterMemoryToFromRegister);
     }
     if (instruction & 0b11111100) == 0b00000100 {
         return Ok(InstructionType::AddImmediateToAccumulator);
     }
+
+    if (instruction & 0b11111100) == 0b00101000 {
+        return Ok(InstructionType::SubRegisterMemoryToFromRegister);
+    }
+    if (instruction & 0b11111100) == 0b00101100 {
+        return Ok(InstructionType::SubImmediateFromAccumulator);
+    }
+
     Err(DecodeError::InvalidInstruction)
 }
 
@@ -202,6 +229,7 @@ fn identify_immediate_to_register_instruction(byte: u8) -> Result<InstructionTyp
     let instruction = (byte & 0b00111000) >> 3;
     match instruction {
         0x0 => Ok(InstructionType::AddImmediateToRegisterMemory),
+        0x5 => Ok(InstructionType::SubImmediateToRegisterMemory),
         _ => Err(DecodeError::InvalidImmediateToRegisterInstruction),
     }
 }

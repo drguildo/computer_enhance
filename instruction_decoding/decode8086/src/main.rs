@@ -211,14 +211,14 @@ fn identify_instruction(bytes: &[u8]) -> Result<InstructionType, DecodeError> {
     if (instruction & 0b11111100) == 0b00000000 {
         return Ok(InstructionType::AddRegisterMemoryToFromRegister);
     }
-    if (instruction & 0b11111100) == 0b00000100 {
+    if (instruction & 0b11111110) == 0b00000100 {
         return Ok(InstructionType::AddImmediateToAccumulator);
     }
 
     if (instruction & 0b11111100) == 0b00101000 {
         return Ok(InstructionType::SubRegisterMemoryToFromRegister);
     }
-    if (instruction & 0b11111100) == 0b00101100 {
+    if (instruction & 0b11111110) == 0b00101100 {
         return Ok(InstructionType::SubImmediateFromAccumulator);
     }
 

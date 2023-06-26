@@ -515,13 +515,20 @@ fn decode_immediate_to_register_memory(instruction_type: InstructionType, bytes:
         decode_immediate_to_register_memory_operands(bytes, sign_extension, word_operation)
             .expect("failed to decode operands");
 
-    println!(
-        "{} {} {}, {}",
-        instruction_type,
-        if word_operation { "word" } else { "byte" },
-        operands.register_memory,
-        operands.immediate
-    );
+    if let RegisterMemory::Register(_register) = &operands.register_memory {
+        println!(
+            "{} {}, {}",
+            instruction_type, operands.register_memory, operands.immediate
+        );
+    } else {
+        println!(
+            "{} {} {}, {}",
+            instruction_type,
+            if word_operation { "word" } else { "byte" },
+            operands.register_memory,
+            operands.immediate
+        );
+    };
 
     operands.instruction_length
 }

@@ -30,7 +30,7 @@ impl std::fmt::Display for InstructionType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Mode {
     MemoryModeNoDisplacement,
     MemoryMode8BitDisplacement,
@@ -38,7 +38,7 @@ enum Mode {
     RegisterMode,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum RegisterName {
     AL,
     CL,
@@ -82,13 +82,14 @@ impl std::fmt::Display for RegisterName {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum RegisterMemory {
     Register(RegisterName),
     RegisterAddress(RegisterName),
     RegisterAddressDisplacement(RegisterName, u16),
     RegisterAddressOffset(RegisterName, RegisterName),
     RegisterAddressOffsetDisplacement(RegisterName, RegisterName, u16),
+    DirectAddress(u16),
 }
 
 impl std::fmt::Display for RegisterMemory {
@@ -117,6 +118,7 @@ impl std::fmt::Display for RegisterMemory {
                     format!("[{} + {} + {}]", register, offset_register, displacement)
                 }
             }
+            RegisterMemory::DirectAddress(address) => format!("[{}]", address),
         };
         write!(f, "{}", s)
     }
@@ -259,7 +261,7 @@ fn decode_reg_memory_with_register_to_either_operands(
     }
 
     let register_memory =
-        decode_register_memory(operands_byte & 0x7, mode, displacement, word_operation)?;
+        decode_register_memory(operands_byte & 0x7, &mode, displacement, word_operation)?;
 
     Ok(RegMemoryWithRegisterToEitherOperands {
         instruction_length,
@@ -276,19 +278,45 @@ fn decode_immediate_to_register_memory_operands(
     let operands_byte = instruction_stream[1];
     let word_immediate = !sign_extension && word_operation;
 
+    let register_memory_byte = operands_byte & 0x7;
+
     let mode = decode_mod(operands_byte >> 6)?;
 
     let instruction_length: usize;
     let mut displacement: u16 = 0;
     let immediate: u16;
     match mode {
-        Mode::MemoryModeNoDisplacement | Mode::RegisterMode => {
+        Mode::RegisterMode => {
             if word_immediate {
                 instruction_length = 4;
                 immediate = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
             } else {
                 instruction_length = 3;
                 immediate = instruction_stream[2] as u16;
+            }
+        }
+        Mode::MemoryModeNoDisplacement => {
+            if register_memory_byte == 0x6 {
+                // Shitty hack because we need the displacement to construct a
+                // DirectAddress, but we  also need to check the register/memory
+                // type is a direct address to know to calculate the
+                // displacement.
+                displacement = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+                if word_immediate {
+                    instruction_length = 6;
+                    immediate = u16::from_be_bytes([instruction_stream[5], instruction_stream[4]]);
+                } else {
+                    instruction_length = 5;
+                    immediate = instruction_stream[4] as u16;
+                }
+            } else {
+                if word_immediate {
+                    instruction_length = 4;
+                    immediate = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+                } else {
+                    instruction_length = 3;
+                    immediate = instruction_stream[2] as u16;
+                }
             }
         }
         Mode::MemoryMode8BitDisplacement => {
@@ -314,7 +342,7 @@ fn decode_immediate_to_register_memory_operands(
     }
 
     let register_memory =
-        decode_register_memory(operands_byte & 0x7, mode, displacement, word_operation)?;
+        decode_register_memory(register_memory_byte, &mode, displacement, word_operation)?;
 
     Ok(ImmediateToRegisterMemoryOperands {
         instruction_length,
@@ -336,7 +364,7 @@ fn decode_mod(mod_byte: u8) -> Result<Mode, DecodeError> {
 
 fn decode_register_memory(
     register_memory_byte: u8,
-    mode: Mode,
+    mode: &Mode,
     displacement: u16,
     word_operation: bool,
 ) -> Result<RegisterMemory, DecodeError> {
@@ -434,7 +462,7 @@ fn decode_register_memory(
         (0x6, Mode::MemoryMode8BitDisplacement) | (0x6, Mode::MemoryMode16BitDisplacement) => {
             RegisterMemory::RegisterAddressDisplacement(RegisterName::BP, displacement)
         }
-        (0x6, Mode::MemoryModeNoDisplacement) => todo!(),
+        (0x6, Mode::MemoryModeNoDisplacement) => RegisterMemory::DirectAddress(displacement),
         (0x6, Mode::RegisterMode) => {
             if word_operation {
                 RegisterMemory::Register(RegisterName::SI)

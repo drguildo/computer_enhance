@@ -180,27 +180,20 @@ fn main() {
                 | InstructionType::CmpRegisterMemoryAndRegister => {
                     decode_reg_memory_and_register_to_either(instruction_type, remaining_bytes)
                 }
+
                 InstructionType::MovImmediateToRegister => {
                     decode_immediate_to_register(instruction_type, remaining_bytes)
                 }
-                InstructionType::AddImmediateToRegisterMemory => {
+
+                InstructionType::AddImmediateToRegisterMemory
+                | InstructionType::SubImmediateToRegisterMemory
+                | InstructionType::CmpImmediateWithRegisterMemory => {
                     decode_immediate_to_register_memory(instruction_type, remaining_bytes)
-                }
-                InstructionType::AddImmediateToAccumulator => {
-                    decode_immediate_to_accumulator(instruction_type, remaining_bytes)
                 }
 
-                InstructionType::SubImmediateToRegisterMemory => {
-                    decode_immediate_to_register_memory(instruction_type, remaining_bytes)
-                }
-                InstructionType::SubImmediateFromAccumulator => {
-                    decode_immediate_to_accumulator(instruction_type, remaining_bytes)
-                }
-
-                InstructionType::CmpImmediateWithRegisterMemory => {
-                    decode_immediate_to_register_memory(instruction_type, remaining_bytes)
-                }
-                InstructionType::CmpImmediateWithAccumulator => {
+                InstructionType::AddImmediateToAccumulator
+                | InstructionType::SubImmediateFromAccumulator
+                | InstructionType::CmpImmediateWithAccumulator => {
                     decode_immediate_to_accumulator(instruction_type, remaining_bytes)
                 }
             };

@@ -10,6 +10,10 @@ enum InstructionType {
     SubRegisterMemoryToFromRegister,
     SubImmediateToRegisterMemory,
     SubImmediateFromAccumulator,
+
+    CmpRegisterMemoryAndRegister,
+    CmpImmediateWithRegisterMemory,
+    CmpImmediateWithAccumulator,
 }
 
 impl std::fmt::Display for InstructionType {
@@ -25,6 +29,10 @@ impl std::fmt::Display for InstructionType {
             InstructionType::SubRegisterMemoryToFromRegister => "sub",
             InstructionType::SubImmediateToRegisterMemory => "sub",
             InstructionType::SubImmediateFromAccumulator => "sub",
+
+            InstructionType::CmpRegisterMemoryAndRegister => "cmp",
+            InstructionType::CmpImmediateWithRegisterMemory => "cmp",
+            InstructionType::CmpImmediateWithAccumulator => "cmp",
         };
         write!(f, "{}", s)
     }
@@ -168,7 +176,8 @@ fn main() {
             let instruction_size = match instruction_type {
                 InstructionType::MovRegisterMemoryToFromRegister
                 | InstructionType::AddRegisterMemoryToFromRegister
-                | InstructionType::SubRegisterMemoryToFromRegister => {
+                | InstructionType::SubRegisterMemoryToFromRegister
+                | InstructionType::CmpRegisterMemoryAndRegister => {
                     decode_reg_memory_and_register_to_either(instruction_type, remaining_bytes)
                 }
                 InstructionType::MovImmediateToRegister => {
@@ -185,6 +194,13 @@ fn main() {
                     decode_immediate_to_register_memory(instruction_type, remaining_bytes)
                 }
                 InstructionType::SubImmediateFromAccumulator => {
+                    decode_immediate_to_accumulator(instruction_type, remaining_bytes)
+                }
+
+                InstructionType::CmpImmediateWithRegisterMemory => {
+                    decode_immediate_to_register_memory(instruction_type, remaining_bytes)
+                }
+                InstructionType::CmpImmediateWithAccumulator => {
                     decode_immediate_to_accumulator(instruction_type, remaining_bytes)
                 }
             };
@@ -224,6 +240,13 @@ fn identify_instruction(bytes: &[u8]) -> Result<InstructionType, DecodeError> {
         return Ok(InstructionType::SubImmediateFromAccumulator);
     }
 
+    if (instruction & 0b11111100) == 0b00111000 {
+        return Ok(InstructionType::CmpRegisterMemoryAndRegister);
+    }
+    if (instruction & 0b11111110) == 0b00111100 {
+        return Ok(InstructionType::CmpImmediateWithAccumulator);
+    }
+
     Err(DecodeError::InvalidInstruction)
 }
 
@@ -232,6 +255,7 @@ fn identify_immediate_to_register_instruction(byte: u8) -> Result<InstructionTyp
     match instruction {
         0x0 => Ok(InstructionType::AddImmediateToRegisterMemory),
         0x5 => Ok(InstructionType::SubImmediateToRegisterMemory),
+        0x7 => Ok(InstructionType::CmpImmediateWithRegisterMemory),
         _ => Err(DecodeError::InvalidImmediateToRegisterInstruction),
     }
 }

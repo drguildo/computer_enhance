@@ -14,6 +14,27 @@ enum InstructionType {
     CmpRegisterMemoryAndRegister,
     CmpImmediateWithRegisterMemory,
     CmpImmediateWithAccumulator,
+
+    JumpOnEqualZero,
+    JumpOnLessNotGreaterOrEqual,
+    JumpOnLessOrEqualNotGreater,
+    JumpOnBelowNotAboveOrEqual,
+    JumpOnBelowOrEqualNotAbove,
+    JumpOnParityParityEven,
+    JumpOnOverflow,
+    JumpOnSign,
+    JumpOnNotEqualNotZero,
+    JumpOnNotLessGreaterOrEqual,
+    JumpOnNotLessOrEqualGreater,
+    JumpOnNotBelowAboveOrEqual,
+    JumpOnNotBelowOrEqualAbove,
+    JumpOnNotParParOdd,
+    JumpOnNotOverflow,
+    JumpOnNotSign,
+    LoopCxTimes,
+    LoopWhileZeroEqual,
+    LoopWhileNotZeroEqual,
+    JumpOnCxZero,
 }
 
 impl std::fmt::Display for InstructionType {
@@ -33,6 +54,27 @@ impl std::fmt::Display for InstructionType {
             InstructionType::CmpRegisterMemoryAndRegister => "cmp",
             InstructionType::CmpImmediateWithRegisterMemory => "cmp",
             InstructionType::CmpImmediateWithAccumulator => "cmp",
+
+            InstructionType::JumpOnEqualZero => "jz",
+            InstructionType::JumpOnLessNotGreaterOrEqual => "jl",
+            InstructionType::JumpOnLessOrEqualNotGreater => "jng",
+            InstructionType::JumpOnBelowNotAboveOrEqual => "jc",
+            InstructionType::JumpOnBelowOrEqualNotAbove => "jna",
+            InstructionType::JumpOnParityParityEven => "jpe",
+            InstructionType::JumpOnOverflow => "jo",
+            InstructionType::JumpOnSign => "js",
+            InstructionType::JumpOnNotEqualNotZero => "jnz",
+            InstructionType::JumpOnNotLessGreaterOrEqual => "jnl",
+            InstructionType::JumpOnNotLessOrEqualGreater => "jg",
+            InstructionType::JumpOnNotBelowAboveOrEqual => "jnc",
+            InstructionType::JumpOnNotBelowOrEqualAbove => "ja",
+            InstructionType::JumpOnNotParParOdd => "jpo",
+            InstructionType::JumpOnNotOverflow => "jno",
+            InstructionType::JumpOnNotSign => "jns",
+            InstructionType::LoopCxTimes => "loop",
+            InstructionType::LoopWhileZeroEqual => "loope",
+            InstructionType::LoopWhileNotZeroEqual => "loopne",
+            InstructionType::JumpOnCxZero => "jcxz",
         };
         write!(f, "{}", s)
     }
@@ -196,6 +238,27 @@ fn main() {
                 | InstructionType::CmpImmediateWithAccumulator => {
                     decode_immediate_to_accumulator(instruction_type, remaining_bytes)
                 }
+
+                InstructionType::JumpOnEqualZero
+                | InstructionType::JumpOnLessNotGreaterOrEqual
+                | InstructionType::JumpOnLessOrEqualNotGreater
+                | InstructionType::JumpOnBelowNotAboveOrEqual
+                | InstructionType::JumpOnBelowOrEqualNotAbove
+                | InstructionType::JumpOnParityParityEven
+                | InstructionType::JumpOnOverflow
+                | InstructionType::JumpOnSign
+                | InstructionType::JumpOnNotEqualNotZero
+                | InstructionType::JumpOnNotLessGreaterOrEqual
+                | InstructionType::JumpOnNotLessOrEqualGreater
+                | InstructionType::JumpOnNotBelowAboveOrEqual
+                | InstructionType::JumpOnNotBelowOrEqualAbove
+                | InstructionType::JumpOnNotParParOdd
+                | InstructionType::JumpOnNotOverflow
+                | InstructionType::JumpOnNotSign
+                | InstructionType::LoopCxTimes
+                | InstructionType::LoopWhileZeroEqual
+                | InstructionType::LoopWhileNotZeroEqual
+                | InstructionType::JumpOnCxZero => decode_jump(instruction_type, remaining_bytes),
             };
             instruction_index += instruction_size;
         } else {
@@ -240,7 +303,29 @@ fn identify_instruction(bytes: &[u8]) -> Result<InstructionType, DecodeError> {
         return Ok(InstructionType::CmpImmediateWithAccumulator);
     }
 
-    Err(DecodeError::InvalidInstruction)
+    match instruction {
+        0b01110100 => return Ok(InstructionType::JumpOnEqualZero),
+        0b01111100 => return Ok(InstructionType::JumpOnLessNotGreaterOrEqual),
+        0b01111110 => return Ok(InstructionType::JumpOnLessOrEqualNotGreater),
+        0b01110010 => return Ok(InstructionType::JumpOnBelowNotAboveOrEqual),
+        0b01110110 => return Ok(InstructionType::JumpOnBelowOrEqualNotAbove),
+        0b01111010 => return Ok(InstructionType::JumpOnParityParityEven),
+        0b01110000 => return Ok(InstructionType::JumpOnOverflow),
+        0b01111000 => return Ok(InstructionType::JumpOnSign),
+        0b01110101 => return Ok(InstructionType::JumpOnNotEqualNotZero),
+        0b01111101 => return Ok(InstructionType::JumpOnNotLessGreaterOrEqual),
+        0b01111111 => return Ok(InstructionType::JumpOnNotLessOrEqualGreater),
+        0b01110011 => return Ok(InstructionType::JumpOnNotBelowAboveOrEqual),
+        0b01110111 => return Ok(InstructionType::JumpOnNotBelowOrEqualAbove),
+        0b01111011 => return Ok(InstructionType::JumpOnNotParParOdd),
+        0b01110001 => return Ok(InstructionType::JumpOnNotOverflow),
+        0b01111001 => return Ok(InstructionType::JumpOnNotSign),
+        0b11100010 => return Ok(InstructionType::LoopCxTimes),
+        0b11100001 => return Ok(InstructionType::LoopWhileZeroEqual),
+        0b11100000 => return Ok(InstructionType::LoopWhileNotZeroEqual),
+        0b11100011 => return Ok(InstructionType::JumpOnCxZero),
+        _ => Err(DecodeError::InvalidInstruction),
+    }
 }
 
 fn identify_immediate_to_register_instruction(byte: u8) -> Result<InstructionType, DecodeError> {
@@ -623,4 +708,12 @@ fn decode_immediate_to_accumulator(instruction_type: InstructionType, bytes: &[u
     } else {
         2
     }
+}
+
+fn decode_jump(instruction_type: InstructionType, remaining_bytes: &[u8]) -> usize {
+    let increment = remaining_bytes[1] as i8;
+
+    println!("{} {}", instruction_type, increment);
+
+    2
 }

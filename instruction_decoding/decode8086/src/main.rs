@@ -358,7 +358,7 @@ fn decode_reg_memory_with_register_to_either_operands(
         }
         Mode::MemoryMode16BitDisplacement => {
             instruction_length = 4;
-            displacement = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+            displacement = u16::from_le_bytes([instruction_stream[2], instruction_stream[3]]);
         }
     }
 
@@ -391,7 +391,7 @@ fn decode_immediate_to_register_memory_operands(
         Mode::RegisterMode => {
             if word_immediate {
                 instruction_length = 4;
-                immediate = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+                immediate = u16::from_le_bytes([instruction_stream[2], instruction_stream[3]]);
             } else {
                 instruction_length = 3;
                 immediate = instruction_stream[2] as u16;
@@ -403,10 +403,10 @@ fn decode_immediate_to_register_memory_operands(
                 // DirectAddress, but we  also need to check the register/memory
                 // type is a direct address to know to calculate the
                 // displacement.
-                displacement = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+                displacement = u16::from_le_bytes([instruction_stream[2], instruction_stream[3]]);
                 if word_immediate {
                     instruction_length = 6;
-                    immediate = u16::from_be_bytes([instruction_stream[5], instruction_stream[4]]);
+                    immediate = u16::from_le_bytes([instruction_stream[4], instruction_stream[5]]);
                 } else {
                     instruction_length = 5;
                     immediate = instruction_stream[4] as u16;
@@ -414,7 +414,7 @@ fn decode_immediate_to_register_memory_operands(
             } else {
                 if word_immediate {
                     instruction_length = 4;
-                    immediate = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+                    immediate = u16::from_le_bytes([instruction_stream[2], instruction_stream[3]]);
                 } else {
                     instruction_length = 3;
                     immediate = instruction_stream[2] as u16;
@@ -425,17 +425,17 @@ fn decode_immediate_to_register_memory_operands(
             displacement = instruction_stream[2] as u16;
             if word_immediate {
                 instruction_length = 5;
-                immediate = u16::from_be_bytes([instruction_stream[4], instruction_stream[3]]);
+                immediate = u16::from_le_bytes([instruction_stream[3], instruction_stream[4]]);
             } else {
                 instruction_length = 4;
                 immediate = instruction_stream[3] as u16;
             }
         }
         Mode::MemoryMode16BitDisplacement => {
-            displacement = u16::from_be_bytes([instruction_stream[3], instruction_stream[2]]);
+            displacement = u16::from_le_bytes([instruction_stream[2], instruction_stream[3]]);
             if word_immediate {
                 instruction_length = 6;
-                immediate = u16::from_be_bytes([instruction_stream[5], instruction_stream[4]]);
+                immediate = u16::from_le_bytes([instruction_stream[4], instruction_stream[5]]);
             } else {
                 instruction_length = 5;
                 immediate = instruction_stream[4] as u16;
@@ -669,7 +669,7 @@ fn decode_immediate_to_register(instruction_type: InstructionType, bytes: &[u8])
     let register =
         decode_register(bytes[0] & 7, word_operation).expect("failed to decode register");
     let data = if word_operation {
-        u16::from_be_bytes([bytes[2], bytes[1]])
+        u16::from_le_bytes([bytes[1], bytes[2]])
     } else {
         bytes[1] as u16
     };
@@ -687,7 +687,7 @@ fn decode_immediate_to_accumulator(instruction_type: InstructionType, bytes: &[u
     let word_operation = (bytes[0] & 0x1) != 0;
 
     let data = if word_operation {
-        u16::from_be_bytes([bytes[2], bytes[1]])
+        u16::from_le_bytes([bytes[1], bytes[2]])
     } else {
         bytes[1] as u16
     };

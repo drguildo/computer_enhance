@@ -1,86 +1,4 @@
 #[derive(Debug, PartialEq)]
-enum InstructionType {
-    MovRegisterMemoryToFromRegister,
-    MovImmediateToRegister,
-
-    AddRegisterMemoryToFromRegister,
-    AddImmediateToRegisterMemory,
-    AddImmediateToAccumulator,
-
-    SubRegisterMemoryToFromRegister,
-    SubImmediateToRegisterMemory,
-    SubImmediateFromAccumulator,
-
-    CmpRegisterMemoryAndRegister,
-    CmpImmediateWithRegisterMemory,
-    CmpImmediateWithAccumulator,
-
-    JumpOnEqualZero,
-    JumpOnLessNotGreaterOrEqual,
-    JumpOnLessOrEqualNotGreater,
-    JumpOnBelowNotAboveOrEqual,
-    JumpOnBelowOrEqualNotAbove,
-    JumpOnParityParityEven,
-    JumpOnOverflow,
-    JumpOnSign,
-    JumpOnNotEqualNotZero,
-    JumpOnNotLessGreaterOrEqual,
-    JumpOnNotLessOrEqualGreater,
-    JumpOnNotBelowAboveOrEqual,
-    JumpOnNotBelowOrEqualAbove,
-    JumpOnNotParParOdd,
-    JumpOnNotOverflow,
-    JumpOnNotSign,
-    LoopCxTimes,
-    LoopWhileZeroEqual,
-    LoopWhileNotZeroEqual,
-    JumpOnCxZero,
-}
-
-impl std::fmt::Display for InstructionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            InstructionType::MovRegisterMemoryToFromRegister => "mov",
-            InstructionType::MovImmediateToRegister => "mov",
-
-            InstructionType::AddRegisterMemoryToFromRegister => "add",
-            InstructionType::AddImmediateToRegisterMemory => "add",
-            InstructionType::AddImmediateToAccumulator => "add",
-
-            InstructionType::SubRegisterMemoryToFromRegister => "sub",
-            InstructionType::SubImmediateToRegisterMemory => "sub",
-            InstructionType::SubImmediateFromAccumulator => "sub",
-
-            InstructionType::CmpRegisterMemoryAndRegister => "cmp",
-            InstructionType::CmpImmediateWithRegisterMemory => "cmp",
-            InstructionType::CmpImmediateWithAccumulator => "cmp",
-
-            InstructionType::JumpOnEqualZero => "jz",
-            InstructionType::JumpOnLessNotGreaterOrEqual => "jl",
-            InstructionType::JumpOnLessOrEqualNotGreater => "jng",
-            InstructionType::JumpOnBelowNotAboveOrEqual => "jc",
-            InstructionType::JumpOnBelowOrEqualNotAbove => "jna",
-            InstructionType::JumpOnParityParityEven => "jpe",
-            InstructionType::JumpOnOverflow => "jo",
-            InstructionType::JumpOnSign => "js",
-            InstructionType::JumpOnNotEqualNotZero => "jnz",
-            InstructionType::JumpOnNotLessGreaterOrEqual => "jnl",
-            InstructionType::JumpOnNotLessOrEqualGreater => "jg",
-            InstructionType::JumpOnNotBelowAboveOrEqual => "jnc",
-            InstructionType::JumpOnNotBelowOrEqualAbove => "ja",
-            InstructionType::JumpOnNotParParOdd => "jpo",
-            InstructionType::JumpOnNotOverflow => "jno",
-            InstructionType::JumpOnNotSign => "jns",
-            InstructionType::LoopCxTimes => "loop",
-            InstructionType::LoopWhileZeroEqual => "loope",
-            InstructionType::LoopWhileNotZeroEqual => "loopne",
-            InstructionType::JumpOnCxZero => "jcxz",
-        };
-        write!(f, "{}", s)
-    }
-}
-
-#[derive(Debug, PartialEq)]
 enum Mode {
     MemoryModeNoDisplacement,
     MemoryMode8BitDisplacement,
@@ -133,6 +51,34 @@ impl std::fmt::Display for RegisterName {
 }
 
 #[derive(Debug, PartialEq)]
+enum Mnemonic {
+    ADD,
+    CMP,
+    JA,
+    JC,
+    JCXZ,
+    JG,
+    JL,
+    JNA,
+    JNC,
+    JNG,
+    JNL,
+    JNO,
+    JNS,
+    JNZ,
+    JO,
+    JPE,
+    JPO,
+    JS,
+    JZ,
+    LOOP,
+    LOOPE,
+    LOOPNE,
+    MOV,
+    SUB,
+}
+
+#[derive(Debug, PartialEq)]
 enum RegisterMemory {
     Register(RegisterName),
     RegisterAddress(RegisterName),
@@ -140,6 +86,21 @@ enum RegisterMemory {
     RegisterAddressOffset(RegisterName, RegisterName),
     RegisterAddressOffsetDisplacement(RegisterName, RegisterName, u16),
     DirectAddress(u16),
+}
+
+#[derive(Debug, PartialEq)]
+enum InstructionCategory {
+    RegisterMemoryAndRegister(Mnemonic, RegisterMemory, RegisterMemory),
+    ImmediateToRegister(Mnemonic, u16, RegisterName),
+    ImmediateToRegisterMemory(Mnemonic, u16, RegisterMemory),
+    ImmediateToAccumulator(Mnemonic, u16, RegisterName),
+    Jump(Mnemonic, i8),
+}
+
+struct Instruction {
+    length: usize,
+    instruction_category: InstructionCategory,
+    word_operation: bool,
 }
 
 impl std::fmt::Display for RegisterMemory {
@@ -193,7 +154,6 @@ enum DecodeError {
     InvalidInstruction,
     InvalidMode,
     InvalidRegister,
-    InvalidImmediateToRegisterInstruction,
 }
 
 fn main() {
@@ -201,66 +161,11 @@ fn main() {
     let path = args.first().expect("failed to get path to binary");
 
     let instruction_stream = std::fs::read(path).expect("failed to read file");
-
-    if let Some(filename) = std::path::Path::new(path).file_name() {
-        if let Some(filename_string) = filename.to_str() {
-            println!("; {} disassembly:", filename_string);
-        }
-    }
-
-    println!("bits 16");
-
     let mut instruction_index = 0;
     while instruction_index < instruction_stream.len() {
-        if let Ok(instruction_type) = identify_instruction(&instruction_stream[instruction_index..])
-        {
-            let remaining_bytes = &instruction_stream[instruction_index..];
-            let instruction_size = match instruction_type {
-                InstructionType::MovRegisterMemoryToFromRegister
-                | InstructionType::AddRegisterMemoryToFromRegister
-                | InstructionType::SubRegisterMemoryToFromRegister
-                | InstructionType::CmpRegisterMemoryAndRegister => {
-                    decode_reg_memory_and_register_to_either(instruction_type, remaining_bytes)
-                }
-
-                InstructionType::MovImmediateToRegister => {
-                    decode_immediate_to_register(instruction_type, remaining_bytes)
-                }
-
-                InstructionType::AddImmediateToRegisterMemory
-                | InstructionType::SubImmediateToRegisterMemory
-                | InstructionType::CmpImmediateWithRegisterMemory => {
-                    decode_immediate_to_register_memory(instruction_type, remaining_bytes)
-                }
-
-                InstructionType::AddImmediateToAccumulator
-                | InstructionType::SubImmediateFromAccumulator
-                | InstructionType::CmpImmediateWithAccumulator => {
-                    decode_immediate_to_accumulator(instruction_type, remaining_bytes)
-                }
-
-                InstructionType::JumpOnEqualZero
-                | InstructionType::JumpOnLessNotGreaterOrEqual
-                | InstructionType::JumpOnLessOrEqualNotGreater
-                | InstructionType::JumpOnBelowNotAboveOrEqual
-                | InstructionType::JumpOnBelowOrEqualNotAbove
-                | InstructionType::JumpOnParityParityEven
-                | InstructionType::JumpOnOverflow
-                | InstructionType::JumpOnSign
-                | InstructionType::JumpOnNotEqualNotZero
-                | InstructionType::JumpOnNotLessGreaterOrEqual
-                | InstructionType::JumpOnNotLessOrEqualGreater
-                | InstructionType::JumpOnNotBelowAboveOrEqual
-                | InstructionType::JumpOnNotBelowOrEqualAbove
-                | InstructionType::JumpOnNotParParOdd
-                | InstructionType::JumpOnNotOverflow
-                | InstructionType::JumpOnNotSign
-                | InstructionType::LoopCxTimes
-                | InstructionType::LoopWhileZeroEqual
-                | InstructionType::LoopWhileNotZeroEqual
-                | InstructionType::JumpOnCxZero => decode_jump(instruction_type, remaining_bytes),
-            };
-            instruction_index += instruction_size;
+        if let Ok(instruction) = decode_instruction(&instruction_stream[instruction_index..]) {
+            println!("{:?}", instruction.instruction_category);
+            instruction_index += instruction.length;
         } else {
             panic!(
                 "unsupported instruction {:#010b} at offset {}",
@@ -270,71 +175,93 @@ fn main() {
     }
 }
 
-fn identify_instruction(bytes: &[u8]) -> Result<InstructionType, DecodeError> {
-    let instruction = bytes[0];
+fn decode_instruction(remaining_bytes: &[u8]) -> Result<Instruction, DecodeError> {
+    let instruction = remaining_bytes[0];
+
     if (instruction & 0b11111100) == 0b10000000 {
-        return identify_immediate_to_register_instruction(bytes[1]);
+        let mnemonic = match (remaining_bytes[1] & 0b00111000) >> 3 {
+            0x0 => Mnemonic::ADD,
+            0x5 => Mnemonic::SUB,
+            0x7 => Mnemonic::CMP,
+            _ => return Err(DecodeError::InvalidInstruction),
+        };
+        return Ok(decode_immediate_to_register_memory(
+            mnemonic,
+            remaining_bytes,
+        ));
     }
+
     if (instruction & 0b11111100) == 0b10001000 {
-        return Ok(InstructionType::MovRegisterMemoryToFromRegister);
+        return Ok(decode_reg_memory_and_register_to_either(
+            Mnemonic::MOV,
+            remaining_bytes,
+        ));
     }
     if (instruction & 0b11110000) == 0b10110000 {
-        return Ok(InstructionType::MovImmediateToRegister);
+        return Ok(decode_immediate_to_register(Mnemonic::MOV, remaining_bytes));
     }
 
     if (instruction & 0b11111100) == 0b00000000 {
-        return Ok(InstructionType::AddRegisterMemoryToFromRegister);
+        return Ok(decode_reg_memory_and_register_to_either(
+            Mnemonic::ADD,
+            remaining_bytes,
+        ));
     }
     if (instruction & 0b11111110) == 0b00000100 {
-        return Ok(InstructionType::AddImmediateToAccumulator);
+        return Ok(decode_immediate_to_accumulator(
+            Mnemonic::ADD,
+            remaining_bytes,
+        ));
     }
 
     if (instruction & 0b11111100) == 0b00101000 {
-        return Ok(InstructionType::SubRegisterMemoryToFromRegister);
+        return Ok(decode_reg_memory_and_register_to_either(
+            Mnemonic::SUB,
+            remaining_bytes,
+        ));
     }
     if (instruction & 0b11111110) == 0b00101100 {
-        return Ok(InstructionType::SubImmediateFromAccumulator);
+        return Ok(decode_immediate_to_accumulator(
+            Mnemonic::SUB,
+            remaining_bytes,
+        ));
     }
 
     if (instruction & 0b11111100) == 0b00111000 {
-        return Ok(InstructionType::CmpRegisterMemoryAndRegister);
+        return Ok(decode_reg_memory_and_register_to_either(
+            Mnemonic::CMP,
+            remaining_bytes,
+        ));
     }
     if (instruction & 0b11111110) == 0b00111100 {
-        return Ok(InstructionType::CmpImmediateWithAccumulator);
+        return Ok(decode_immediate_to_accumulator(
+            Mnemonic::CMP,
+            remaining_bytes,
+        ));
     }
 
     match instruction {
-        0b01110100 => return Ok(InstructionType::JumpOnEqualZero),
-        0b01111100 => return Ok(InstructionType::JumpOnLessNotGreaterOrEqual),
-        0b01111110 => return Ok(InstructionType::JumpOnLessOrEqualNotGreater),
-        0b01110010 => return Ok(InstructionType::JumpOnBelowNotAboveOrEqual),
-        0b01110110 => return Ok(InstructionType::JumpOnBelowOrEqualNotAbove),
-        0b01111010 => return Ok(InstructionType::JumpOnParityParityEven),
-        0b01110000 => return Ok(InstructionType::JumpOnOverflow),
-        0b01111000 => return Ok(InstructionType::JumpOnSign),
-        0b01110101 => return Ok(InstructionType::JumpOnNotEqualNotZero),
-        0b01111101 => return Ok(InstructionType::JumpOnNotLessGreaterOrEqual),
-        0b01111111 => return Ok(InstructionType::JumpOnNotLessOrEqualGreater),
-        0b01110011 => return Ok(InstructionType::JumpOnNotBelowAboveOrEqual),
-        0b01110111 => return Ok(InstructionType::JumpOnNotBelowOrEqualAbove),
-        0b01111011 => return Ok(InstructionType::JumpOnNotParParOdd),
-        0b01110001 => return Ok(InstructionType::JumpOnNotOverflow),
-        0b01111001 => return Ok(InstructionType::JumpOnNotSign),
-        0b11100010 => return Ok(InstructionType::LoopCxTimes),
-        0b11100001 => return Ok(InstructionType::LoopWhileZeroEqual),
-        0b11100000 => return Ok(InstructionType::LoopWhileNotZeroEqual),
-        0b11100011 => return Ok(InstructionType::JumpOnCxZero),
+        0b01110100 => return Ok(decode_jump(Mnemonic::JZ, remaining_bytes)),
+        0b01111100 => return Ok(decode_jump(Mnemonic::JL, remaining_bytes)),
+        0b01111110 => return Ok(decode_jump(Mnemonic::JNG, remaining_bytes)),
+        0b01110010 => return Ok(decode_jump(Mnemonic::JC, remaining_bytes)),
+        0b01110110 => return Ok(decode_jump(Mnemonic::JNA, remaining_bytes)),
+        0b01111010 => return Ok(decode_jump(Mnemonic::JPE, remaining_bytes)),
+        0b01110000 => return Ok(decode_jump(Mnemonic::JO, remaining_bytes)),
+        0b01111000 => return Ok(decode_jump(Mnemonic::JS, remaining_bytes)),
+        0b01110101 => return Ok(decode_jump(Mnemonic::JNZ, remaining_bytes)),
+        0b01111101 => return Ok(decode_jump(Mnemonic::JNL, remaining_bytes)),
+        0b01111111 => return Ok(decode_jump(Mnemonic::JG, remaining_bytes)),
+        0b01110011 => return Ok(decode_jump(Mnemonic::JNC, remaining_bytes)),
+        0b01110111 => return Ok(decode_jump(Mnemonic::JA, remaining_bytes)),
+        0b01111011 => return Ok(decode_jump(Mnemonic::JPO, remaining_bytes)),
+        0b01110001 => return Ok(decode_jump(Mnemonic::JNO, remaining_bytes)),
+        0b01111001 => return Ok(decode_jump(Mnemonic::JNS, remaining_bytes)),
+        0b11100010 => return Ok(decode_jump(Mnemonic::LOOP, remaining_bytes)),
+        0b11100001 => return Ok(decode_jump(Mnemonic::LOOPE, remaining_bytes)),
+        0b11100000 => return Ok(decode_jump(Mnemonic::LOOPNE, remaining_bytes)),
+        0b11100011 => return Ok(decode_jump(Mnemonic::JCXZ, remaining_bytes)),
         _ => Err(DecodeError::InvalidInstruction),
-    }
-}
-
-fn identify_immediate_to_register_instruction(byte: u8) -> Result<InstructionType, DecodeError> {
-    let instruction = (byte & 0b00111000) >> 3;
-    match instruction {
-        0x0 => Ok(InstructionType::AddImmediateToRegisterMemory),
-        0x5 => Ok(InstructionType::SubImmediateToRegisterMemory),
-        0x7 => Ok(InstructionType::CmpImmediateWithRegisterMemory),
-        _ => Err(DecodeError::InvalidImmediateToRegisterInstruction),
     }
 }
 
@@ -612,10 +539,7 @@ fn decode_register(register_byte: u8, word_operation: bool) -> Result<RegisterNa
     }
 }
 
-fn decode_reg_memory_and_register_to_either(
-    instruction_type: InstructionType,
-    bytes: &[u8],
-) -> usize {
+fn decode_reg_memory_and_register_to_either(mnemonic: Mnemonic, bytes: &[u8]) -> Instruction {
     let word_operation = (bytes[0] & 0x1) != 0;
     let reg_is_destination = (bytes[0] & 0x2) != 0;
 
@@ -623,21 +547,29 @@ fn decode_reg_memory_and_register_to_either(
         .expect("failed to decode operands");
 
     if reg_is_destination {
-        println!(
-            "{} {}, {}",
-            instruction_type, operands.register, operands.register_memory
-        );
+        Instruction {
+            length: operands.instruction_length,
+            instruction_category: InstructionCategory::RegisterMemoryAndRegister(
+                mnemonic,
+                operands.register_memory,
+                RegisterMemory::Register(operands.register),
+            ),
+            word_operation,
+        }
     } else {
-        println!(
-            "{} {}, {}",
-            instruction_type, operands.register_memory, operands.register
-        );
+        Instruction {
+            length: operands.instruction_length,
+            instruction_category: InstructionCategory::RegisterMemoryAndRegister(
+                mnemonic,
+                RegisterMemory::Register(operands.register),
+                operands.register_memory,
+            ),
+            word_operation,
+        }
     }
-
-    return operands.instruction_length;
 }
 
-fn decode_immediate_to_register_memory(instruction_type: InstructionType, bytes: &[u8]) -> usize {
+fn decode_immediate_to_register_memory(mnemonic: Mnemonic, bytes: &[u8]) -> Instruction {
     let word_operation = (bytes[0] & 0x1) != 0;
     let sign_extension = (bytes[0] & 0x2) != 0;
 
@@ -645,75 +577,72 @@ fn decode_immediate_to_register_memory(instruction_type: InstructionType, bytes:
         decode_immediate_to_register_memory_operands(bytes, sign_extension, word_operation)
             .expect("failed to decode operands");
 
-    if let RegisterMemory::Register(_register) = &operands.register_memory {
-        println!(
-            "{} {}, {}",
-            instruction_type, operands.register_memory, operands.immediate
-        );
-    } else {
-        println!(
-            "{} {} {}, {}",
-            instruction_type,
-            if word_operation { "word" } else { "byte" },
+    Instruction {
+        length: operands.instruction_length,
+        instruction_category: InstructionCategory::ImmediateToRegisterMemory(
+            mnemonic,
+            operands.immediate,
             operands.register_memory,
-            operands.immediate
-        );
-    };
-
-    operands.instruction_length
+        ),
+        word_operation,
+    }
 }
 
-fn decode_immediate_to_register(instruction_type: InstructionType, bytes: &[u8]) -> usize {
+fn decode_immediate_to_register(mnemonic: Mnemonic, bytes: &[u8]) -> Instruction {
     let word_operation = (bytes[0] & 0x8) != 0;
 
     let register =
         decode_register(bytes[0] & 7, word_operation).expect("failed to decode register");
-    let data = if word_operation {
+    let immediate = if word_operation {
         u16::from_le_bytes([bytes[1], bytes[2]])
     } else {
         bytes[1] as u16
     };
 
-    println!("{} {}, {}", instruction_type, register, data);
-
-    if word_operation {
-        3
-    } else {
-        2
+    let length = if word_operation { 3 } else { 2 };
+    Instruction {
+        length,
+        instruction_category: InstructionCategory::ImmediateToRegister(
+            mnemonic, immediate, register,
+        ),
+        word_operation,
     }
 }
 
-fn decode_immediate_to_accumulator(instruction_type: InstructionType, bytes: &[u8]) -> usize {
+fn decode_immediate_to_accumulator(mnemonic: Mnemonic, bytes: &[u8]) -> Instruction {
     let word_operation = (bytes[0] & 0x1) != 0;
 
+    let length = if word_operation { 3 } else { 2 };
+
     let data = if word_operation {
         u16::from_le_bytes([bytes[1], bytes[2]])
     } else {
         bytes[1] as u16
     };
 
-    println!(
-        "{} {}, {}",
-        instruction_type,
-        if word_operation {
-            RegisterName::AX
-        } else {
-            RegisterName::AL
-        },
-        data
-    );
-
-    if word_operation {
-        3
+    let register_name = if word_operation {
+        RegisterName::AX
     } else {
-        2
+        RegisterName::AL
+    };
+
+    Instruction {
+        length,
+        instruction_category: InstructionCategory::ImmediateToAccumulator(
+            mnemonic,
+            data,
+            register_name,
+        ),
+        word_operation,
     }
 }
 
-fn decode_jump(instruction_type: InstructionType, remaining_bytes: &[u8]) -> usize {
+fn decode_jump(mnemonic: Mnemonic, remaining_bytes: &[u8]) -> Instruction {
     let increment = remaining_bytes[1] as i8;
 
-    println!("{} {}", instruction_type, increment);
-
-    2
+    Instruction {
+        length: 2,
+        instruction_category: InstructionCategory::Jump(mnemonic, increment),
+        word_operation: false,
+    }
 }

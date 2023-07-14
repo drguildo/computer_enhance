@@ -92,7 +92,7 @@ enum RegisterMemory {
 enum InstructionCategory {
     RegisterMemoryAndRegister(Mnemonic, RegisterMemory, RegisterMemory),
     ImmediateToRegister(Mnemonic, u16, RegisterName),
-    ImmediateToRegisterMemory(Mnemonic, u16, RegisterMemory),
+    ImmediateToRegisterMemory(Mnemonic, u16, RegisterMemory, bool),
     ImmediateToAccumulator(Mnemonic, u16, RegisterName),
     Jump(Mnemonic, i8),
 }
@@ -100,7 +100,38 @@ enum InstructionCategory {
 struct Instruction {
     length: usize,
     instruction_category: InstructionCategory,
-    word_operation: bool,
+}
+
+impl std::fmt::Display for Mnemonic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Mnemonic::ADD => "add",
+            Mnemonic::CMP => "cmp",
+            Mnemonic::JA => "ja",
+            Mnemonic::JC => "jc",
+            Mnemonic::JCXZ => "jcxz",
+            Mnemonic::JG => "jg",
+            Mnemonic::JL => "jl",
+            Mnemonic::JNA => "jna",
+            Mnemonic::JNC => "jnc",
+            Mnemonic::JNG => "jng",
+            Mnemonic::JNL => "jnl",
+            Mnemonic::JNO => "jno",
+            Mnemonic::JNS => "jns",
+            Mnemonic::JNZ => "jnz",
+            Mnemonic::JO => "jo",
+            Mnemonic::JPE => "jpe",
+            Mnemonic::JPO => "jpo",
+            Mnemonic::JS => "js",
+            Mnemonic::JZ => "jz",
+            Mnemonic::LOOP => "loop",
+            Mnemonic::LOOPE => "loope",
+            Mnemonic::LOOPNE => "loopne",
+            Mnemonic::MOV => "mov",
+            Mnemonic::SUB => "sub",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 impl std::fmt::Display for RegisterMemory {
@@ -135,6 +166,38 @@ impl std::fmt::Display for RegisterMemory {
     }
 }
 
+impl std::fmt::Display for InstructionCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => {
+                format!("{} {}, {}", mnemonic, dest, src)
+            }
+            InstructionCategory::ImmediateToRegister(mnemonic, immediate, register) => {
+                format!("{} {}, {}", mnemonic, register, immediate)
+            }
+            InstructionCategory::ImmediateToRegisterMemory(
+                mnemonic,
+                immediate,
+                dest,
+                word_operation,
+            ) => {
+                format!(
+                    "{} {} {}, {}",
+                    mnemonic,
+                    if *word_operation { "word" } else { "byte" },
+                    dest,
+                    immediate
+                )
+            }
+            InstructionCategory::ImmediateToAccumulator(mnemonic, immediate, dest) => {
+                format!("{} {}, {}", mnemonic, dest, immediate)
+            }
+            InstructionCategory::Jump(mnemonic, increment) => format!("{} {}", mnemonic, increment),
+        };
+        write!(f, "{}", s)
+    }
+}
+
 #[derive(Debug)]
 struct RegMemoryWithRegisterToEitherOperands {
     instruction_length: usize,
@@ -164,7 +227,7 @@ fn main() {
     let mut instruction_index = 0;
     while instruction_index < instruction_stream.len() {
         if let Ok(instruction) = decode_instruction(&instruction_stream[instruction_index..]) {
-            println!("{:?}", instruction.instruction_category);
+            println!("{}", instruction.instruction_category);
             instruction_index += instruction.length;
         } else {
             panic!(
@@ -554,7 +617,6 @@ fn decode_reg_memory_and_register_to_either(mnemonic: Mnemonic, bytes: &[u8]) ->
                 operands.register_memory,
                 RegisterMemory::Register(operands.register),
             ),
-            word_operation,
         }
     } else {
         Instruction {
@@ -564,7 +626,6 @@ fn decode_reg_memory_and_register_to_either(mnemonic: Mnemonic, bytes: &[u8]) ->
                 RegisterMemory::Register(operands.register),
                 operands.register_memory,
             ),
-            word_operation,
         }
     }
 }
@@ -583,8 +644,8 @@ fn decode_immediate_to_register_memory(mnemonic: Mnemonic, bytes: &[u8]) -> Inst
             mnemonic,
             operands.immediate,
             operands.register_memory,
+            word_operation,
         ),
-        word_operation,
     }
 }
 
@@ -605,7 +666,6 @@ fn decode_immediate_to_register(mnemonic: Mnemonic, bytes: &[u8]) -> Instruction
         instruction_category: InstructionCategory::ImmediateToRegister(
             mnemonic, immediate, register,
         ),
-        word_operation,
     }
 }
 
@@ -633,7 +693,6 @@ fn decode_immediate_to_accumulator(mnemonic: Mnemonic, bytes: &[u8]) -> Instruct
             data,
             register_name,
         ),
-        word_operation,
     }
 }
 
@@ -643,6 +702,5 @@ fn decode_jump(mnemonic: Mnemonic, remaining_bytes: &[u8]) -> Instruction {
     Instruction {
         length: 2,
         instruction_category: InstructionCategory::Jump(mnemonic, increment),
-        word_operation: false,
     }
 }

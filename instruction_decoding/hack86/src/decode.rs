@@ -9,21 +9,21 @@ enum Mode {
 #[derive(Debug, PartialEq)]
 pub(crate) enum RegisterName {
     AL,
+    BL,
     CL,
     DL,
-    BL,
     AH,
+    BH,
     CH,
     DH,
-    BH,
     AX,
+    BX,
     CX,
     DX,
-    BX,
-    SP,
     BP,
-    SI,
+    SP,
     DI,
+    SI,
 }
 
 impl std::fmt::Display for RegisterName {
@@ -193,7 +193,7 @@ impl std::fmt::Display for InstructionCategory {
     }
 }
 
-pub(crate) struct Instruction {
+pub struct Instruction {
     pub(crate) length: usize,
     pub(crate) instruction_category: InstructionCategory,
 }

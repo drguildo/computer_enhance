@@ -27,7 +27,7 @@ impl Registers {
 
     pub fn simulate(&mut self, instruction: &Instruction) {
         match &instruction.instruction_category {
-            decode::InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => {}
+            decode::InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => todo!(),
             decode::InstructionCategory::ImmediateToRegister(mnemonic, immediate, register) => {
                 match mnemonic {
                     decode::Mnemonic::ADD => todo!(),
@@ -78,9 +78,11 @@ impl Registers {
                 immediate,
                 dest,
                 word_operation,
-            ) => {}
-            decode::InstructionCategory::ImmediateToAccumulator(mnemonic, immediate, dest) => {}
-            decode::InstructionCategory::Jump(mnemonic, increment) => {}
+            ) => todo!(),
+            decode::InstructionCategory::ImmediateToAccumulator(mnemonic, immediate, dest) => {
+                todo!()
+            }
+            decode::InstructionCategory::Jump(mnemonic, increment) => todo!(),
         };
     }
 }

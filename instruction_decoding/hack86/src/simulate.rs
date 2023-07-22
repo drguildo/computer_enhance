@@ -40,28 +40,6 @@ impl Registers {
             decode::InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => todo!(),
             decode::InstructionCategory::ImmediateToRegister(mnemonic, immediate, register) => {
                 match mnemonic {
-                    decode::Mnemonic::ADD => todo!(),
-                    decode::Mnemonic::CMP => todo!(),
-                    decode::Mnemonic::JA => todo!(),
-                    decode::Mnemonic::JC => todo!(),
-                    decode::Mnemonic::JCXZ => todo!(),
-                    decode::Mnemonic::JG => todo!(),
-                    decode::Mnemonic::JL => todo!(),
-                    decode::Mnemonic::JNA => todo!(),
-                    decode::Mnemonic::JNC => todo!(),
-                    decode::Mnemonic::JNG => todo!(),
-                    decode::Mnemonic::JNL => todo!(),
-                    decode::Mnemonic::JNO => todo!(),
-                    decode::Mnemonic::JNS => todo!(),
-                    decode::Mnemonic::JNZ => todo!(),
-                    decode::Mnemonic::JO => todo!(),
-                    decode::Mnemonic::JPE => todo!(),
-                    decode::Mnemonic::JPO => todo!(),
-                    decode::Mnemonic::JS => todo!(),
-                    decode::Mnemonic::JZ => todo!(),
-                    decode::Mnemonic::LOOP => todo!(),
-                    decode::Mnemonic::LOOPE => todo!(),
-                    decode::Mnemonic::LOOPNE => todo!(),
                     decode::Mnemonic::MOV => match register {
                         RegisterName::AL => todo!(),
                         RegisterName::BL => todo!(),
@@ -80,7 +58,7 @@ impl Registers {
                         RegisterName::DI => self.di.set(*immediate),
                         RegisterName::SI => self.si.set(*immediate),
                     },
-                    decode::Mnemonic::SUB => todo!(),
+                    _ => todo!(),
                 }
             }
             decode::InstructionCategory::ImmediateToRegisterMemory(

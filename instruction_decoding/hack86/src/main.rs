@@ -19,6 +19,8 @@ fn main() {
             if simulation_mode {
                 simulate(&instruction_stream);
             } else {
+                println!("bits 16");
+                println!("; {} disassembly:", path);
                 decode_and_print(&instruction_stream);
             }
         }

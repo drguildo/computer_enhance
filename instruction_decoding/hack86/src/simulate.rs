@@ -1,4 +1,4 @@
-use crate::decode::{self, Instruction, RegisterName};
+use crate::decode::{self, Instruction, RegisterMemory, RegisterName};
 
 pub struct Register(RegisterName, u16);
 
@@ -37,29 +37,26 @@ impl Registers {
     pub fn simulate(&mut self, instruction: &Instruction) {
         print!("{} ; ", instruction.instruction_category);
         match &instruction.instruction_category {
-            decode::InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => todo!(),
-            decode::InstructionCategory::ImmediateToRegister(mnemonic, immediate, register) => {
+            decode::InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => {
                 match mnemonic {
-                    decode::Mnemonic::MOV => match register {
-                        RegisterName::AL => todo!(),
-                        RegisterName::BL => todo!(),
-                        RegisterName::CL => todo!(),
-                        RegisterName::DL => todo!(),
-                        RegisterName::AH => todo!(),
-                        RegisterName::BH => todo!(),
-                        RegisterName::CH => todo!(),
-                        RegisterName::DH => todo!(),
-                        RegisterName::AX => self.ax.set(*immediate),
-                        RegisterName::BX => self.bx.set(*immediate),
-                        RegisterName::CX => self.cx.set(*immediate),
-                        RegisterName::DX => self.dx.set(*immediate),
-                        RegisterName::BP => self.bp.set(*immediate),
-                        RegisterName::SP => self.sp.set(*immediate),
-                        RegisterName::DI => self.di.set(*immediate),
-                        RegisterName::SI => self.si.set(*immediate),
+                    decode::Mnemonic::MOV => match (src, dest) {
+                        (
+                            RegisterMemory::Register(src_register),
+                            RegisterMemory::Register(dst_register),
+                        ) => {
+                            let new_value = self.get(src_register).1;
+                            self.get(dst_register).set(new_value)
+                        }
+                        _ => todo!(),
                     },
                     _ => todo!(),
-                }
+                };
+            }
+            decode::InstructionCategory::ImmediateToRegister(mnemonic, immediate, register) => {
+                match mnemonic {
+                    decode::Mnemonic::MOV => self.get(register).set(*immediate),
+                    _ => todo!(),
+                };
             }
             decode::InstructionCategory::ImmediateToRegisterMemory(
                 mnemonic,
@@ -72,6 +69,20 @@ impl Registers {
             }
             decode::InstructionCategory::Jump(mnemonic, increment) => todo!(),
         };
+    }
+
+    fn get(&mut self, name: &RegisterName) -> &mut Register {
+        match name {
+            RegisterName::AX => &mut self.ax,
+            RegisterName::BX => &mut self.bx,
+            RegisterName::CX => &mut self.cx,
+            RegisterName::DX => &mut self.dx,
+            RegisterName::BP => &mut self.bp,
+            RegisterName::SP => &mut self.sp,
+            RegisterName::DI => &mut self.di,
+            RegisterName::SI => &mut self.si,
+            _ => todo!(),
+        }
     }
 }
 

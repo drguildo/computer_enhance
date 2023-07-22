@@ -62,5 +62,7 @@ fn simulate(instruction_stream: &[u8]) {
         }
     }
 
+    println!();
+    println!("Final registers:");
     println!("{}", registers);
 }

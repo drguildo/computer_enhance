@@ -1,31 +1,41 @@
-use crate::decode::{self, Instruction};
+use crate::decode::{self, Instruction, RegisterName};
+
+pub struct Register(RegisterName, u16);
+
+impl Register {
+    pub fn set(&mut self, new_value: u16) {
+        println!("{}:{:#x}->{:#x}", self.0, self.1, new_value);
+        self.1 = new_value;
+    }
+}
 
 pub struct Registers {
-    ax: u16,
-    cx: u16,
-    dx: u16,
-    bx: u16,
-    sp: u16,
-    bp: u16,
-    si: u16,
-    di: u16,
+    ax: Register,
+    cx: Register,
+    dx: Register,
+    bx: Register,
+    sp: Register,
+    bp: Register,
+    si: Register,
+    di: Register,
 }
 
 impl Registers {
     pub fn new() -> Registers {
         Registers {
-            ax: 0,
-            bx: 0,
-            cx: 0,
-            dx: 0,
-            bp: 0,
-            sp: 0,
-            di: 0,
-            si: 0,
+            ax: Register(RegisterName::AX, 0),
+            bx: Register(RegisterName::BX, 0),
+            cx: Register(RegisterName::CX, 0),
+            dx: Register(RegisterName::DX, 0),
+            bp: Register(RegisterName::BP, 0),
+            sp: Register(RegisterName::SP, 0),
+            di: Register(RegisterName::DI, 0),
+            si: Register(RegisterName::SI, 0),
         }
     }
 
     pub fn simulate(&mut self, instruction: &Instruction) {
+        print!("{} ; ", instruction.instruction_category);
         match &instruction.instruction_category {
             decode::InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => todo!(),
             decode::InstructionCategory::ImmediateToRegister(mnemonic, immediate, register) => {
@@ -53,22 +63,22 @@ impl Registers {
                     decode::Mnemonic::LOOPE => todo!(),
                     decode::Mnemonic::LOOPNE => todo!(),
                     decode::Mnemonic::MOV => match register {
-                        decode::RegisterName::AL => todo!(),
-                        decode::RegisterName::BL => todo!(),
-                        decode::RegisterName::CL => todo!(),
-                        decode::RegisterName::DL => todo!(),
-                        decode::RegisterName::AH => todo!(),
-                        decode::RegisterName::BH => todo!(),
-                        decode::RegisterName::CH => todo!(),
-                        decode::RegisterName::DH => todo!(),
-                        decode::RegisterName::AX => self.ax = *immediate,
-                        decode::RegisterName::BX => self.bx = *immediate,
-                        decode::RegisterName::CX => self.cx = *immediate,
-                        decode::RegisterName::DX => self.dx = *immediate,
-                        decode::RegisterName::BP => self.bp = *immediate,
-                        decode::RegisterName::SP => self.sp = *immediate,
-                        decode::RegisterName::DI => self.di = *immediate,
-                        decode::RegisterName::SI => self.si = *immediate,
+                        RegisterName::AL => todo!(),
+                        RegisterName::BL => todo!(),
+                        RegisterName::CL => todo!(),
+                        RegisterName::DL => todo!(),
+                        RegisterName::AH => todo!(),
+                        RegisterName::BH => todo!(),
+                        RegisterName::CH => todo!(),
+                        RegisterName::DH => todo!(),
+                        RegisterName::AX => self.ax.set(*immediate),
+                        RegisterName::BX => self.bx.set(*immediate),
+                        RegisterName::CX => self.cx.set(*immediate),
+                        RegisterName::DX => self.dx.set(*immediate),
+                        RegisterName::BP => self.bp.set(*immediate),
+                        RegisterName::SP => self.sp.set(*immediate),
+                        RegisterName::DI => self.di.set(*immediate),
+                        RegisterName::SI => self.si.set(*immediate),
                     },
                     decode::Mnemonic::SUB => todo!(),
                 }
@@ -90,14 +100,14 @@ impl Registers {
 impl std::fmt::Display for Registers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut s = String::new();
-        s.push_str(&format!("ax: {:#06x} ({})\n", self.ax, self.ax));
-        s.push_str(&format!("bx: {:#06x} ({})\n", self.bx, self.bx));
-        s.push_str(&format!("cx: {:#06x} ({})\n", self.cx, self.cx));
-        s.push_str(&format!("dx: {:#06x} ({})\n", self.dx, self.dx));
-        s.push_str(&format!("sp: {:#06x} ({})\n", self.sp, self.sp));
-        s.push_str(&format!("bp: {:#06x} ({})\n", self.bp, self.bp));
-        s.push_str(&format!("si: {:#06x} ({})\n", self.si, self.si));
-        s.push_str(&format!("di: {:#06x} ({})\n", self.di, self.di));
+        s.push_str(&format!("ax: {:#06x} ({})\n", self.ax.1, self.ax.1));
+        s.push_str(&format!("bx: {:#06x} ({})\n", self.bx.1, self.bx.1));
+        s.push_str(&format!("cx: {:#06x} ({})\n", self.cx.1, self.cx.1));
+        s.push_str(&format!("dx: {:#06x} ({})\n", self.dx.1, self.dx.1));
+        s.push_str(&format!("sp: {:#06x} ({})\n", self.sp.1, self.sp.1));
+        s.push_str(&format!("bp: {:#06x} ({})\n", self.bp.1, self.bp.1));
+        s.push_str(&format!("si: {:#06x} ({})\n", self.si.1, self.si.1));
+        s.push_str(&format!("di: {:#06x} ({})\n", self.di.1, self.di.1));
         write!(f, "{}", s)
     }
 }

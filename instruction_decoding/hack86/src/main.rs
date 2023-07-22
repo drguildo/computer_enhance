@@ -53,7 +53,6 @@ fn simulate(instruction_stream: &[u8]) {
             decode::decode_instruction(&instruction_stream[instruction_index..])
         {
             registers.simulate(&instruction);
-            println!("{}", instruction.instruction_category);
             instruction_index += instruction.length;
         } else {
             panic!(

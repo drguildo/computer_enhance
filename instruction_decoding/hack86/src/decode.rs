@@ -7,7 +7,7 @@ enum Mode {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum RegisterName {
+pub enum RegisterName {
     AL,
     BL,
     CL,

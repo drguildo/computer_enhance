@@ -488,7 +488,13 @@ fn decode_register_memory(
         (0x2, Mode::MemoryModeNoDisplacement) => {
             RegisterMemory::RegisterAddressOffset(RegisterName::BP, RegisterName::SI)
         }
-        (0x2, Mode::RegisterMode) => RegisterMemory::Register(RegisterName::DL),
+        (0x2, Mode::RegisterMode) => {
+            if word_operation {
+                RegisterMemory::Register(RegisterName::DX)
+            } else {
+                RegisterMemory::Register(RegisterName::DL)
+            }
+        }
 
         (0x3, Mode::MemoryMode8BitDisplacement) | (0x3, Mode::MemoryMode16BitDisplacement) => {
             RegisterMemory::RegisterAddressOffsetDisplacement(

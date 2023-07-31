@@ -173,6 +173,14 @@ impl std::fmt::Display for InstructionCategory {
             InstructionCategory::ImmediateToRegisterMemory(
                 mnemonic,
                 immediate,
+                RegisterMemory::Register(dest),
+                _,
+            ) => {
+                format!("{} {}, {}", mnemonic, dest, immediate)
+            }
+            InstructionCategory::ImmediateToRegisterMemory(
+                mnemonic,
+                immediate,
                 dest,
                 word_operation,
             ) => {
@@ -625,14 +633,34 @@ fn decode_immediate_to_register_memory(mnemonic: Mnemonic, bytes: &[u8]) -> Inst
         decode_immediate_to_register_memory_operands(bytes, sign_extension, word_operation)
             .expect("failed to decode operands");
 
-    Instruction {
-        length: operands.instruction_length,
-        instruction_category: InstructionCategory::ImmediateToRegisterMemory(
-            mnemonic,
-            operands.immediate,
-            operands.register_memory,
-            word_operation,
-        ),
+    match operands.register_memory {
+        RegisterMemory::DirectAddress(_)
+        | RegisterMemory::Register(_)
+        | RegisterMemory::RegisterAddress(
+            RegisterName::BX | RegisterName::BP | RegisterName::DI | RegisterName::SI,
+        )
+        | RegisterMemory::RegisterAddressDisplacement(
+            RegisterName::BX | RegisterName::BP | RegisterName::DI | RegisterName::SI,
+            _,
+        )
+        | RegisterMemory::RegisterAddressOffset(
+            RegisterName::BX | RegisterName::BP | RegisterName::DI | RegisterName::SI,
+            _,
+        )
+        | RegisterMemory::RegisterAddressOffsetDisplacement(
+            RegisterName::BX | RegisterName::BP | RegisterName::DI | RegisterName::SI,
+            _,
+            _,
+        ) => Instruction {
+            length: operands.instruction_length,
+            instruction_category: InstructionCategory::ImmediateToRegisterMemory(
+                mnemonic,
+                operands.immediate,
+                operands.register_memory,
+                word_operation,
+            ),
+        },
+        _ => panic!("invalid 16-bit effective address"), // Should probably return an error instead of panicking
     }
 }
 

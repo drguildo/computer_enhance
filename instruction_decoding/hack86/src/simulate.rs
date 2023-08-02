@@ -2,10 +2,22 @@ use crate::decode::{self, Instruction, RegisterMemory, RegisterName};
 
 pub struct Register(RegisterName, u16);
 
-impl Register {
-    pub fn set(&mut self, new_value: u16) {
-        println!("{}:{:#x}->{:#x}", self.0, self.1, new_value);
-        self.1 = new_value;
+#[derive(Debug, PartialEq)]
+pub struct Flags {
+    sf: bool,
+    zf: bool,
+}
+
+impl std::fmt::Display for Flags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut s = String::new();
+        if self.sf {
+            s.push('S');
+        }
+        if self.zf {
+            s.push('Z');
+        }
+        write!(f, "{}", s)
     }
 }
 
@@ -18,6 +30,7 @@ pub struct Registers {
     bp: Register,
     si: Register,
     di: Register,
+    flags: Flags,
 }
 
 impl Registers {
@@ -31,6 +44,10 @@ impl Registers {
             sp: Register(RegisterName::SP, 0),
             di: Register(RegisterName::DI, 0),
             si: Register(RegisterName::SI, 0),
+            flags: Flags {
+                sf: false,
+                zf: false,
+            },
         }
     }
 
@@ -41,20 +58,41 @@ impl Registers {
                 match mnemonic {
                     decode::Mnemonic::MOV => match (src, dest) {
                         (
-                            RegisterMemory::Register(src_register),
-                            RegisterMemory::Register(dst_register),
+                            RegisterMemory::Register(src_name),
+                            RegisterMemory::Register(dest_name),
                         ) => {
-                            let new_value = self.get(src_register).1;
-                            self.get(dst_register).set(new_value)
+                            let new_value = self.get(src_name).1;
+                            self.set(dest_name, new_value, false);
+                        }
+                        _ => todo!(),
+                    },
+                    decode::Mnemonic::SUB => match (src, dest) {
+                        (
+                            RegisterMemory::Register(src_name),
+                            RegisterMemory::Register(dest_name),
+                        ) => {
+                            let new_value = self.get(dest_name).1 - self.get(src_name).1;
+                            self.set(dest_name, new_value, true);
+                        }
+                        _ => todo!(),
+                    },
+                    decode::Mnemonic::CMP => match (src, dest) {
+                        (
+                            RegisterMemory::Register(src_name),
+                            RegisterMemory::Register(dest_name),
+                        ) => {
+                            let a = self.get(src_name).1;
+                            let b = self.get(dest_name).1;
+                            self.compare(a, b);
                         }
                         _ => todo!(),
                     },
                     _ => todo!(),
                 };
             }
-            decode::InstructionCategory::ImmediateToRegister(mnemonic, immediate, register) => {
+            decode::InstructionCategory::ImmediateToRegister(mnemonic, immediate, dest) => {
                 match mnemonic {
-                    decode::Mnemonic::MOV => self.get(register).set(*immediate),
+                    decode::Mnemonic::MOV => self.set(dest, *immediate, false),
                     _ => todo!(),
                 };
             }
@@ -63,7 +101,23 @@ impl Registers {
                 immediate,
                 dest,
                 word_operation,
-            ) => todo!(),
+            ) => match mnemonic {
+                decode::Mnemonic::ADD => match dest {
+                    RegisterMemory::Register(dest_name) => {
+                        let dest_value = self.get(dest_name).1;
+                        self.set(dest_name, dest_value + *immediate, true);
+                    }
+                    _ => todo!(),
+                },
+                decode::Mnemonic::SUB => match dest {
+                    RegisterMemory::Register(dest_name) => {
+                        let dest_value = self.get(dest_name).1;
+                        self.set(dest_name, dest_value - *immediate, true);
+                    }
+                    _ => todo!(),
+                },
+                _ => todo!(),
+            },
             decode::InstructionCategory::ImmediateToAccumulator(mnemonic, immediate, dest) => {
                 todo!()
             }
@@ -83,6 +137,51 @@ impl Registers {
             RegisterName::SI => &mut self.si,
             _ => todo!(),
         }
+    }
+
+    fn set(&mut self, dest: &RegisterName, value: u16, set_flags: bool) {
+        let register = self.get(dest);
+        let prev = register.1;
+        register.1 = value;
+
+        let new_flags = Flags {
+            sf: (value & 0x8000) != 0,
+            zf: value == 0,
+        };
+
+        let flags_string;
+        if set_flags && self.flags != new_flags {
+            flags_string = format!(
+                " flags:{}->{}",
+                self.flags.to_string(),
+                new_flags.to_string()
+            );
+            self.flags = new_flags;
+        } else {
+            flags_string = "".to_string()
+        };
+
+        println!("{}:{:#x}->{:#x}{}", dest, prev, value, flags_string);
+    }
+
+    fn compare(&mut self, a: u16, b: u16) {
+        let result = b - a;
+
+        let new_flags = Flags {
+            sf: (result & 0x8000) != 0,
+            zf: result == 0,
+        };
+
+        if self.flags != new_flags {
+            println!(
+                "flags:{}->{}",
+                self.flags.to_string(),
+                new_flags.to_string()
+            );
+            self.flags = new_flags;
+        } else {
+            println!();
+        };
     }
 }
 

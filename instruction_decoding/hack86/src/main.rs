@@ -17,7 +17,7 @@ fn main() {
         if let Some(path) = path {
             let instruction_stream = std::fs::read(path).expect("failed to read file");
             if simulation_mode {
-                simulate(&instruction_stream);
+                simulate(instruction_stream);
             } else {
                 println!("bits 16");
                 println!("; {} disassembly:", path);
@@ -46,25 +46,7 @@ fn decode_and_print(instruction_stream: &[u8]) {
     }
 }
 
-fn simulate(instruction_stream: &[u8]) {
-    let mut registers = simulate::Registers::new();
-
-    let mut instruction_index = 0;
-    while instruction_index < instruction_stream.len() {
-        if let Ok(instruction) =
-            decode::decode_instruction(&instruction_stream[instruction_index..])
-        {
-            registers.simulate(&instruction);
-            instruction_index += instruction.length;
-        } else {
-            panic!(
-                "unsupported instruction {:#010b} at offset {}",
-                instruction_stream[instruction_index], instruction_index
-            );
-        }
-    }
-
-    println!();
-    println!("Final registers:");
-    println!("{}", registers);
+fn simulate(instructions: Vec<u8>) {
+    let mut computer = simulate::Hack86::new(instructions);
+    computer.simulate();
 }

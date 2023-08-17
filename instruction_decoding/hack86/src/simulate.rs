@@ -21,7 +21,12 @@ impl std::fmt::Display for Flags {
     }
 }
 
-pub struct Registers {
+pub struct Hack86 {
+    cpu: CPU,
+    instructions: Vec<u8>,
+}
+
+pub struct CPU {
     ax: Register,
     cx: Register,
     dx: Register,
@@ -33,9 +38,37 @@ pub struct Registers {
     flags: Flags,
 }
 
-impl Registers {
-    pub fn new() -> Registers {
-        Registers {
+impl Hack86 {
+    pub fn new(instructions: Vec<u8>) -> Hack86 {
+        Hack86 {
+            cpu: CPU::new(),
+            instructions,
+        }
+    }
+
+    pub fn simulate(&mut self) {
+        let mut i = 0;
+        while i < self.instructions.len() {
+            if let Ok(instruction) = decode::decode_instruction(&self.instructions[i..]) {
+                self.cpu.simulate(&instruction);
+                i += instruction.length;
+            } else {
+                panic!(
+                    "unsupported instruction {:#010b} at offset {}",
+                    self.instructions[i], i
+                );
+            }
+        }
+
+        println!();
+        println!("Final registers:");
+        println!("{}", self.cpu);
+    }
+}
+
+impl CPU {
+    pub fn new() -> CPU {
+        CPU {
             ax: Register(RegisterName::AX, 0),
             bx: Register(RegisterName::BX, 0),
             cx: Register(RegisterName::CX, 0),
@@ -185,7 +218,7 @@ impl Registers {
     }
 }
 
-impl std::fmt::Display for Registers {
+impl std::fmt::Display for CPU {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut s = String::new();
         s.push_str(&format!("ax: {:#06x} ({})\n", self.ax.1, self.ax.1));

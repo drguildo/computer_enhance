@@ -35,6 +35,9 @@ pub struct CPU {
     bp: Register,
     si: Register,
     di: Register,
+
+    ip: usize,
+
     flags: Flags,
 }
 
@@ -47,15 +50,14 @@ impl Hack86 {
     }
 
     pub fn simulate(&mut self) {
-        let mut i = 0;
-        while i < self.instructions.len() {
-            if let Ok(instruction) = decode::decode_instruction(&self.instructions[i..]) {
-                self.cpu.simulate(&instruction);
-                i += instruction.length;
+        while self.cpu.ip < self.instructions.len() {
+            if let Ok(instruction) = decode::decode_instruction(&self.instructions[self.cpu.ip..]) {
+                self.cpu.ip += instruction.length;
+                self.cpu.execute(&instruction);
             } else {
                 panic!(
                     "unsupported instruction {:#010b} at offset {}",
-                    self.instructions[i], i
+                    self.instructions[self.cpu.ip], self.cpu.ip
                 );
             }
         }
@@ -77,6 +79,9 @@ impl CPU {
             sp: Register(RegisterName::SP, 0),
             di: Register(RegisterName::DI, 0),
             si: Register(RegisterName::SI, 0),
+
+            ip: 0,
+
             flags: Flags {
                 sf: false,
                 zf: false,
@@ -84,7 +89,7 @@ impl CPU {
         }
     }
 
-    pub fn simulate(&mut self, instruction: &Instruction) {
+    pub fn execute(&mut self, instruction: &Instruction) {
         print!("{} ; ", instruction.instruction_category);
         match &instruction.instruction_category {
             decode::InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => {

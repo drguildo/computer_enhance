@@ -109,7 +109,7 @@ impl CPU {
                             RegisterMemory::Register(src_name),
                             RegisterMemory::Register(dest_name),
                         ) => {
-                            let new_value = self.get(dest_name).1 - self.get(src_name).1;
+                            let new_value = self.get(dest_name).1.overflowing_sub(self.get(src_name).1).0;
                             self.set(dest_name, new_value, true);
                         }
                         _ => todo!(),

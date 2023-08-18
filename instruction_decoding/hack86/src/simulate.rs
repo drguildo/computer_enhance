@@ -234,6 +234,7 @@ impl std::fmt::Display for CPU {
         s.push_str(&format!("bp: {:#06x} ({})\n", self.bp.1, self.bp.1));
         s.push_str(&format!("si: {:#06x} ({})\n", self.si.1, self.si.1));
         s.push_str(&format!("di: {:#06x} ({})\n", self.di.1, self.di.1));
+        s.push_str(&format!("ip: {:#06x} ({})\n", self.ip, self.ip));
         write!(f, "{}", s)
     }
 }

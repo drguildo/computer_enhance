@@ -2,7 +2,7 @@ use crate::decode::{self, Instruction, RegisterMemory, RegisterName};
 
 pub struct Register(RegisterName, u16);
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Flags {
     sf: bool,
     zf: bool,
@@ -91,6 +91,9 @@ impl CPU {
 
     pub fn execute(&mut self, instruction: &Instruction) {
         print!("{} ; ", instruction.instruction_category);
+
+        let original_flags = self.flags.clone();
+
         match &instruction.instruction_category {
             decode::InstructionCategory::RegisterMemoryAndRegister(mnemonic, src, dest) => {
                 match mnemonic {
@@ -109,7 +112,11 @@ impl CPU {
                             RegisterMemory::Register(src_name),
                             RegisterMemory::Register(dest_name),
                         ) => {
-                            let new_value = self.get(dest_name).1.overflowing_sub(self.get(src_name).1).0;
+                            let new_value = self
+                                .get(dest_name)
+                                .1
+                                .overflowing_sub(self.get(src_name).1)
+                                .0;
                             self.set(dest_name, new_value, true);
                         }
                         _ => todo!(),
@@ -161,6 +168,14 @@ impl CPU {
             }
             decode::InstructionCategory::Jump(mnemonic, increment) => todo!(),
         };
+
+        let original_ip = self.ip - instruction.length;
+        print!(" ip:{:#x}->{:#x}", original_ip, self.ip);
+        if original_flags != self.flags {
+            println!(" flags:{}->{}", original_flags, self.flags)
+        } else {
+            println!();
+        }
     }
 
     fn get(&mut self, name: &RegisterName) -> &mut Register {
@@ -187,19 +202,11 @@ impl CPU {
             zf: value == 0,
         };
 
-        let flags_string;
         if set_flags && self.flags != new_flags {
-            flags_string = format!(
-                " flags:{}->{}",
-                self.flags.to_string(),
-                new_flags.to_string()
-            );
             self.flags = new_flags;
-        } else {
-            flags_string = "".to_string()
-        };
+        }
 
-        println!("{}:{:#x}->{:#x}{}", dest, prev, value, flags_string);
+        print!("{}:{:#x}->{:#x}", dest, prev, value);
     }
 
     fn compare(&mut self, a: u16, b: u16) {
@@ -211,15 +218,8 @@ impl CPU {
         };
 
         if self.flags != new_flags {
-            println!(
-                "flags:{}->{}",
-                self.flags.to_string(),
-                new_flags.to_string()
-            );
             self.flags = new_flags;
-        } else {
-            println!();
-        };
+        }
     }
 }
 

@@ -36,7 +36,7 @@ pub struct CPU {
     si: Register,
     di: Register,
 
-    ip: usize,
+    ip: u16,
 
     flags: Flags,
 }
@@ -50,14 +50,17 @@ impl Hack86 {
     }
 
     pub fn simulate(&mut self) {
-        while self.cpu.ip < self.instructions.len() {
-            if let Ok(instruction) = decode::decode_instruction(&self.instructions[self.cpu.ip..]) {
-                self.cpu.ip += instruction.length;
+        while usize::from(self.cpu.ip) < self.instructions.len() {
+            if let Ok(instruction) =
+                decode::decode_instruction(&self.instructions[usize::from(self.cpu.ip)..])
+            {
+                self.cpu.ip += u16::from(instruction.length);
                 self.cpu.execute(&instruction);
             } else {
                 panic!(
                     "unsupported instruction {:#010b} at offset {}",
-                    self.instructions[self.cpu.ip], self.cpu.ip
+                    self.instructions[usize::from(self.cpu.ip)],
+                    self.cpu.ip
                 );
             }
         }
@@ -169,7 +172,7 @@ impl CPU {
             decode::InstructionCategory::Jump(mnemonic, increment) => todo!(),
         };
 
-        let original_ip = self.ip - instruction.length;
+        let original_ip = self.ip - u16::from(instruction.length);
         print!(" ip:{:#x}->{:#x}", original_ip, self.ip);
         if original_flags != self.flags {
             println!(" flags:{}->{}", original_flags, self.flags)

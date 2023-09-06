@@ -36,7 +36,7 @@ fn decode_and_print(instruction_stream: &[u8]) {
             decode::decode_instruction(&instruction_stream[instruction_index..])
         {
             println!("{}", instruction.instruction_category);
-            instruction_index += instruction.length;
+            instruction_index += usize::from(instruction.length);
         } else {
             panic!(
                 "unsupported instruction {:#010b} at offset {}",

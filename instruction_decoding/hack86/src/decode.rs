@@ -202,20 +202,20 @@ impl std::fmt::Display for InstructionCategory {
 }
 
 pub struct Instruction {
-    pub(crate) length: usize,
+    pub(crate) length: u8,
     pub(crate) instruction_category: InstructionCategory,
 }
 
 #[derive(Debug)]
 struct RegMemoryWithRegisterToEitherOperands {
-    instruction_length: usize,
+    instruction_length: u8,
     register: RegisterName,
     register_memory: RegisterMemory,
 }
 
 #[derive(Debug)]
 struct ImmediateToRegisterMemoryOperands {
-    instruction_length: usize,
+    instruction_length: u8,
     register_memory: RegisterMemory,
     immediate: u16,
 }
@@ -327,7 +327,7 @@ fn decode_reg_memory_with_register_to_either_operands(
 
     let mode = decode_mod(operands_byte >> 6)?;
 
-    let instruction_length: usize;
+    let instruction_length: u8;
     let mut displacement: u16 = 0;
     match mode {
         Mode::MemoryModeNoDisplacement | Mode::RegisterMode => instruction_length = 2,
@@ -363,7 +363,7 @@ fn decode_immediate_to_register_memory_operands(
 
     let mode = decode_mod(operands_byte >> 6)?;
 
-    let instruction_length: usize;
+    let instruction_length: u8;
     let mut displacement: u16 = 0;
     let immediate: u16;
     match mode {

@@ -169,7 +169,19 @@ impl CPU {
             decode::InstructionCategory::ImmediateToAccumulator(mnemonic, immediate, dest) => {
                 todo!()
             }
-            decode::InstructionCategory::Jump(mnemonic, increment) => todo!(),
+            decode::InstructionCategory::Jump(mnemonic, increment) => match mnemonic {
+                decode::Mnemonic::JNZ => {
+                    if !self.flags.zf {
+                        let increment = i16::from(*increment);
+                        let new_ip = self
+                            .ip
+                            .checked_add_signed(increment.into())
+                            .expect("jnz increment should not overflow instruction pointer");
+                        self.ip = new_ip;
+                    }
+                }
+                _ => todo!(),
+            },
         };
 
         let original_ip = self.ip - u16::from(instruction.length);

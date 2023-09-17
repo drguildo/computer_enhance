@@ -237,8 +237,12 @@ pub(crate) fn decode_instruction(remaining_bytes: &[u8]) -> Result<Instruction, 
             0x7 => Mnemonic::CMP,
             _ => return Err(DecodeError::InvalidInstruction),
         };
+        let word_operation = (remaining_bytes[0] & 0x1) != 0;
+        let sign_extension = (remaining_bytes[0] & 0x2) != 0;
         return Ok(decode_immediate_to_register_memory(
             mnemonic,
+            word_operation,
+            sign_extension,
             remaining_bytes,
         ));
     }
@@ -246,6 +250,15 @@ pub(crate) fn decode_instruction(remaining_bytes: &[u8]) -> Result<Instruction, 
     if (instruction & 0b11111100) == 0b10001000 {
         return Ok(decode_reg_memory_and_register_to_either(
             Mnemonic::MOV,
+            remaining_bytes,
+        ));
+    }
+    if (instruction & 0b11111110) == 0b11000110 {
+        let word_operation = (remaining_bytes[0] & 0x1) != 0;
+        return Ok(decode_immediate_to_register_memory(
+            Mnemonic::MOV,
+            word_operation,
+            false,
             remaining_bytes,
         ));
     }
@@ -625,10 +638,12 @@ fn decode_reg_memory_and_register_to_either(mnemonic: Mnemonic, bytes: &[u8]) ->
     }
 }
 
-fn decode_immediate_to_register_memory(mnemonic: Mnemonic, bytes: &[u8]) -> Instruction {
-    let word_operation = (bytes[0] & 0x1) != 0;
-    let sign_extension = (bytes[0] & 0x2) != 0;
-
+fn decode_immediate_to_register_memory(
+    mnemonic: Mnemonic,
+    word_operation: bool,
+    sign_extension: bool,
+    bytes: &[u8],
+) -> Instruction {
     let operands =
         decode_immediate_to_register_memory_operands(bytes, sign_extension, word_operation)
             .expect("failed to decode operands");

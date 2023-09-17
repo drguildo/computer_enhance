@@ -392,7 +392,7 @@ fn decode_immediate_to_register_memory_operands(
         Mode::MemoryModeNoDisplacement => {
             if register_memory_byte == 0x6 {
                 // Shitty hack because we need the displacement to construct a
-                // DirectAddress, but we  also need to check the register/memory
+                // DirectAddress, but we also need to check the register/memory
                 // type is a direct address to know to calculate the
                 // displacement.
                 displacement = u16::from_le_bytes([instruction_stream[2], instruction_stream[3]]);

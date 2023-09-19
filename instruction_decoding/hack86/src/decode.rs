@@ -338,12 +338,30 @@ fn decode_reg_memory_with_register_to_either_operands(
 
     let register = decode_register((operands_byte & 0x38) >> 3, word_operation)?;
 
+    let register_memory_byte = operands_byte & 0x7;
+
     let mode = decode_mod(operands_byte >> 6)?;
 
     let instruction_length: u8;
     let mut displacement: u16 = 0;
     match mode {
-        Mode::MemoryModeNoDisplacement | Mode::RegisterMode => instruction_length = 2,
+        Mode::RegisterMode => instruction_length = 2,
+        Mode::MemoryModeNoDisplacement => {
+            if register_memory_byte == 0x6 {
+                // Shitty hack because we need the displacement to construct a
+                // DirectAddress, but we also need to check the register/memory
+                // type is a direct address to know to calculate the
+                // displacement.
+                displacement = u16::from_le_bytes([instruction_stream[2], instruction_stream[3]]);
+                if word_operation {
+                    instruction_length = 4;
+                } else {
+                    instruction_length = 3;
+                }
+            } else {
+                instruction_length = 2;
+            }
+        }
         Mode::MemoryMode8BitDisplacement => {
             instruction_length = 3;
             displacement = instruction_stream[2] as u16;
@@ -355,7 +373,7 @@ fn decode_reg_memory_with_register_to_either_operands(
     }
 
     let register_memory =
-        decode_register_memory(operands_byte & 0x7, &mode, displacement, word_operation)?;
+        decode_register_memory(register_memory_byte, &mode, displacement, word_operation)?;
 
     Ok(RegMemoryWithRegisterToEitherOperands {
         instruction_length,

@@ -92,8 +92,8 @@ impl CPU {
         }
     }
 
-    pub fn execute(&mut self, instruction: &Instruction) {
-        print!("{} ; ", instruction.instruction_category);
+    pub fn execute(&mut self, instruction: &Instruction, memory: &mut [u8; 65536]) {
+        print!("{} ;", instruction.instruction_category);
 
         let original_flags = self.flags.clone();
 
@@ -221,7 +221,7 @@ impl CPU {
             self.flags = new_flags;
         }
 
-        print!("{}:{:#x}->{:#x}", dest, prev, value);
+        print!(" {}:{:#x}->{:#x}", dest, prev, value);
     }
 
     fn compare(&mut self, a: u16, b: u16) {

@@ -176,7 +176,7 @@ impl CPU {
                 },
                 _ => todo!(),
             },
-            decode::InstructionCategory::ImmediateToAccumulator(mnemonic, immediate, dest) => {
+            decode::InstructionCategory::ImmediateToAccumulator(_mnemonic, _immediate, _dest) => {
                 todo!()
             }
             decode::InstructionCategory::Jump(mnemonic, increment) => match mnemonic {

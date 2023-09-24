@@ -24,6 +24,7 @@ impl std::fmt::Display for Flags {
 pub struct Hack86 {
     cpu: CPU,
     instructions: Vec<u8>,
+    memory: [u8; 65536],
 }
 
 pub struct CPU {
@@ -46,6 +47,7 @@ impl Hack86 {
         Hack86 {
             cpu: CPU::new(),
             instructions,
+            memory: [0; 65536],
         }
     }
 
@@ -55,7 +57,7 @@ impl Hack86 {
                 decode::decode_instruction(&self.instructions[usize::from(self.cpu.ip)..])
             {
                 self.cpu.ip += u16::from(instruction.length);
-                self.cpu.execute(&instruction);
+                self.cpu.execute(&instruction, &mut self.memory);
             } else {
                 panic!(
                     "unsupported instruction {:#010b} at offset {}",
@@ -161,6 +163,14 @@ impl CPU {
                     RegisterMemory::Register(dest_name) => {
                         let dest_value = self.get(dest_name).1;
                         self.set(dest_name, dest_value - *immediate, true);
+                    }
+                    _ => todo!(),
+                },
+                decode::Mnemonic::MOV => match dest {
+                    RegisterMemory::DirectAddress(address) => {
+                        let bytes = immediate.to_le_bytes();
+                        memory[*address as usize] = bytes[0];
+                        memory[(*address + 1) as usize] = bytes[1];
                     }
                     _ => todo!(),
                 },

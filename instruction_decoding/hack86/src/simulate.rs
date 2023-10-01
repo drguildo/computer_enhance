@@ -287,7 +287,9 @@ impl CPU {
             self.flags = new_flags;
         }
 
-        print!(" {}:{:#x}->{:#x}", dest, prev, value);
+        if prev != value {
+            print!(" {}:{:#x}->{:#x}", dest, prev, value);
+        }
     }
 
     fn update_flags(&mut self, a: u16, b: u16) {

@@ -147,6 +147,20 @@ impl CPU {
                         }
                         _ => todo!(),
                     },
+                    decode::Mnemonic::ADD => match (src, dest) {
+                        (
+                            RegisterMemory::Register(src_name),
+                            RegisterMemory::Register(dest_name),
+                        ) => {
+                            let new_value = self
+                                .get_register(dest_name)
+                                .1
+                                .overflowing_add(self.get_register(src_name).1)
+                                .0;
+                            self.set_register(dest_name, new_value, true);
+                        }
+                        _ => todo!(),
+                    },
                     decode::Mnemonic::SUB => match (src, dest) {
                         (
                             RegisterMemory::Register(src_name),

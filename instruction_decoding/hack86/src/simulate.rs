@@ -160,7 +160,7 @@ impl CPU {
                 mnemonic,
                 immediate,
                 dest,
-                word_operation,
+                _word_operation,
             ) => match mnemonic {
                 decode::Mnemonic::ADD => match dest {
                     RegisterMemory::Register(dest_name) => {

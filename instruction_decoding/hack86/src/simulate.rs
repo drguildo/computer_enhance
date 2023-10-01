@@ -120,6 +120,31 @@ impl CPU {
                             ]);
                             self.set_register(dest_name, value, true);
                         }
+                        (
+                            RegisterMemory::Register(src_name),
+                            RegisterMemory::RegisterAddressOffset(dest_name, offset_name),
+                        ) => {
+                            let src_value = self.get_register(src_name).1;
+                            let mut address = self.get_register(dest_name).1;
+                            let offset = self.get_register(offset_name).1;
+                            address += offset;
+                            let bytes = src_value.to_le_bytes();
+                            memory[address as usize] = bytes[0];
+                            memory[(address + 1) as usize] = bytes[1];
+                        }
+                        (
+                            RegisterMemory::RegisterAddressOffset(src_name, offset_name),
+                            RegisterMemory::Register(dest_name),
+                        ) => {
+                            let mut address = self.get_register(src_name).1;
+                            let offset = self.get_register(offset_name).1;
+                            address += offset;
+                            let value = u16::from_le_bytes([
+                                memory[address as usize],
+                                memory[(address + 1) as usize],
+                            ]);
+                            self.set_register(dest_name, value, true);
+                        }
                         _ => todo!(),
                     },
                     decode::Mnemonic::SUB => match (src, dest) {
@@ -252,7 +277,7 @@ impl CPU {
     }
 
     fn update_flags(&mut self, a: u16, b: u16) {
-        let result = b - a;
+        let result = b.overflowing_sub(a).0;
 
         let new_flags = Flags {
             sf: (result & 0x8000) != 0,

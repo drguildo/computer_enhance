@@ -110,6 +110,16 @@ impl CPU {
                             let new_value = self.get(src_name).1;
                             self.set(dest_name, new_value, false);
                         }
+                        (
+                            RegisterMemory::DirectAddress(address),
+                            RegisterMemory::Register(dest_name),
+                        ) => {
+                            let value: u16 = u16::from_le_bytes([
+                                memory[*address as usize],
+                                memory[(*address + 1) as usize],
+                            ]);
+                            self.set(dest_name, value, true);
+                        }
                         _ => todo!(),
                     },
                     decode::Mnemonic::SUB => match (src, dest) {

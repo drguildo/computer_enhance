@@ -107,8 +107,8 @@ impl CPU {
                             RegisterMemory::Register(src_name),
                             RegisterMemory::Register(dest_name),
                         ) => {
-                            let new_value = self.get(src_name).1;
-                            self.set(dest_name, new_value, false);
+                            let new_value = self.get_register(src_name).1;
+                            self.set_register(dest_name, new_value, false);
                         }
                         (
                             RegisterMemory::DirectAddress(address),
@@ -118,7 +118,7 @@ impl CPU {
                                 memory[*address as usize],
                                 memory[(*address + 1) as usize],
                             ]);
-                            self.set(dest_name, value, true);
+                            self.set_register(dest_name, value, true);
                         }
                         _ => todo!(),
                     },
@@ -128,11 +128,11 @@ impl CPU {
                             RegisterMemory::Register(dest_name),
                         ) => {
                             let new_value = self
-                                .get(dest_name)
+                                .get_register(dest_name)
                                 .1
-                                .overflowing_sub(self.get(src_name).1)
+                                .overflowing_sub(self.get_register(src_name).1)
                                 .0;
-                            self.set(dest_name, new_value, true);
+                            self.set_register(dest_name, new_value, true);
                         }
                         _ => todo!(),
                     },
@@ -141,9 +141,9 @@ impl CPU {
                             RegisterMemory::Register(src_name),
                             RegisterMemory::Register(dest_name),
                         ) => {
-                            let a = self.get(src_name).1;
-                            let b = self.get(dest_name).1;
-                            self.compare(a, b);
+                            let a = self.get_register(src_name).1;
+                            let b = self.get_register(dest_name).1;
+                            self.update_flags(a, b);
                         }
                         _ => todo!(),
                     },
@@ -152,7 +152,7 @@ impl CPU {
             }
             decode::InstructionCategory::ImmediateToRegister(mnemonic, immediate, dest) => {
                 match mnemonic {
-                    decode::Mnemonic::MOV => self.set(dest, *immediate, false),
+                    decode::Mnemonic::MOV => self.set_register(dest, *immediate, false),
                     _ => todo!(),
                 };
             }
@@ -164,15 +164,15 @@ impl CPU {
             ) => match mnemonic {
                 decode::Mnemonic::ADD => match dest {
                     RegisterMemory::Register(dest_name) => {
-                        let dest_value = self.get(dest_name).1;
-                        self.set(dest_name, dest_value + *immediate, true);
+                        let dest_value = self.get_register(dest_name).1;
+                        self.set_register(dest_name, dest_value + *immediate, true);
                     }
                     _ => todo!(),
                 },
                 decode::Mnemonic::SUB => match dest {
                     RegisterMemory::Register(dest_name) => {
-                        let dest_value = self.get(dest_name).1;
-                        self.set(dest_name, dest_value - *immediate, true);
+                        let dest_value = self.get_register(dest_name).1;
+                        self.set_register(dest_name, dest_value - *immediate, true);
                     }
                     _ => todo!(),
                 },
@@ -183,7 +183,7 @@ impl CPU {
                         memory[(*address + 1) as usize] = bytes[1];
                     }
                     RegisterMemory::RegisterAddressDisplacement(dest_name, displacement) => {
-                        let mut address = self.get(dest_name).1;
+                        let mut address = self.get_register(dest_name).1;
                         address += displacement;
                         let bytes = immediate.to_le_bytes();
                         memory[address as usize] = bytes[0];
@@ -220,7 +220,7 @@ impl CPU {
         }
     }
 
-    fn get(&mut self, name: &RegisterName) -> &mut Register {
+    fn get_register(&mut self, name: &RegisterName) -> &mut Register {
         match name {
             RegisterName::AX => &mut self.ax,
             RegisterName::BX => &mut self.bx,
@@ -234,8 +234,8 @@ impl CPU {
         }
     }
 
-    fn set(&mut self, dest: &RegisterName, value: u16, set_flags: bool) {
-        let register = self.get(dest);
+    fn set_register(&mut self, dest: &RegisterName, value: u16, set_flags: bool) {
+        let register = self.get_register(dest);
         let prev = register.1;
         register.1 = value;
 
@@ -251,7 +251,7 @@ impl CPU {
         print!(" {}:{:#x}->{:#x}", dest, prev, value);
     }
 
-    fn compare(&mut self, a: u16, b: u16) {
+    fn update_flags(&mut self, a: u16, b: u16) {
         let result = b - a;
 
         let new_flags = Flags {

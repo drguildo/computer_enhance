@@ -172,6 +172,13 @@ impl CPU {
                         memory[*address as usize] = bytes[0];
                         memory[(*address + 1) as usize] = bytes[1];
                     }
+                    RegisterMemory::RegisterAddressDisplacement(dest_name, displacement) => {
+                        let mut address = self.get(dest_name).1;
+                        address += displacement;
+                        let bytes = immediate.to_le_bytes();
+                        memory[address as usize] = bytes[0];
+                        memory[(address + 1) as usize] = bytes[1];
+                    }
                     _ => todo!(),
                 },
                 _ => todo!(),

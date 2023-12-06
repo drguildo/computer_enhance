@@ -145,6 +145,27 @@ impl CPU {
                             ]);
                             self.set_register(dest_name, value, true);
                         }
+                        (
+                            RegisterMemory::RegisterAddressDisplacement(src_name, displacement),
+                            RegisterMemory::Register(dest_name),
+                        ) => {
+                            let address = self.get_register(src_name).1 + displacement;
+                            let value = u16::from_le_bytes([
+                                memory[address as usize],
+                                memory[(address + 1) as usize],
+                            ]);
+                            self.set_register(dest_name, value, true);
+                        }
+                        (
+                            RegisterMemory::Register(src_name),
+                            RegisterMemory::RegisterAddressDisplacement(dest_name, displacement),
+                        ) => {
+                            let value = self.get_register(src_name).1;
+                            let address = self.get_register(dest_name).1 + displacement;
+                            let bytes = value.to_le_bytes();
+                            memory[address as usize] = bytes[0];
+                            memory[(address + 1) as usize] = bytes[1];
+                        }
                         _ => todo!(),
                     },
                     decode::Mnemonic::ADD => match (src, dest) {

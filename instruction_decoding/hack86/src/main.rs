@@ -2,27 +2,21 @@ mod decode;
 mod simulate;
 
 fn main() {
-    let mut simulation_mode: bool = false;
+    let args = std::env::args().collect::<Vec<String>>();
 
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if let Some(first) = args.first() {
-        let path = if first == "-s" {
-            simulation_mode = true;
+    let simulation_mode = args.iter().any(|s| s == "-s");
+    let dump = args.iter().any(|s| s == "-d");
 
-            args.iter().nth(1)
+    let path = args.iter().skip(1).find(|s| !s.starts_with("-"));
+
+    if let Some(path) = path {
+        let instruction_stream = std::fs::read(&path).expect("failed to read file");
+        if simulation_mode {
+            simulate(instruction_stream);
         } else {
-            args.first()
-        };
-
-        if let Some(path) = path {
-            let instruction_stream = std::fs::read(path).expect("failed to read file");
-            if simulation_mode {
-                simulate(instruction_stream);
-            } else {
-                println!("bits 16");
-                println!("; {} disassembly:", path);
-                decode_and_print(&instruction_stream);
-            }
+            println!("bits 16");
+            println!("; {} disassembly:", &path);
+            decode_and_print(&instruction_stream);
         }
     } else {
         eprintln!("Please specify the path to a binary.");

@@ -251,6 +251,13 @@ impl CPU {
                     }
                     _ => todo!(),
                 },
+                decode::Mnemonic::CMP => match dest {
+                    RegisterMemory::Register(dest_name) => {
+                        let dest_value = self.get_register(dest_name).1;
+                        self.update_flags(*immediate, dest_value);
+                    }
+                    _ => todo!(),
+                },
                 _ => todo!(),
             },
             decode::InstructionCategory::ImmediateToAccumulator(_mnemonic, _immediate, _dest) => {

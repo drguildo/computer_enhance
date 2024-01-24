@@ -71,6 +71,10 @@ impl Hack86 {
         println!("Final registers:");
         println!("{}", self.cpu);
     }
+
+    pub fn memory(&self) -> &[u8] {
+        &self.memory
+    }
 }
 
 impl CPU {

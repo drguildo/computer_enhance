@@ -12,7 +12,7 @@ fn main() {
     if let Some(path) = path {
         let instruction_stream = std::fs::read(&path).expect("failed to read file");
         if simulation_mode {
-            simulate(instruction_stream);
+            simulate(instruction_stream, dump);
         } else {
             println!("bits 16");
             println!("; {} disassembly:", &path);
@@ -40,7 +40,11 @@ fn decode_and_print(instruction_stream: &[u8]) {
     }
 }
 
-fn simulate(instructions: Vec<u8>) {
+fn simulate(instructions: Vec<u8>, dump: bool) {
     let mut computer = simulate::Hack86::new(instructions);
     computer.simulate();
+    if dump {
+        let memory = computer.memory();
+        std::fs::write("hack86_memory.data", memory).expect("Failed to write memory to file");
+    }
 }

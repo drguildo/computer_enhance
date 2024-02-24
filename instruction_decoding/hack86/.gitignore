@@ -1,4 +1,8 @@
 /target
 
+.vscode
+.idea
+
 asm/*
 !asm/*.asm
+asm/test.asm

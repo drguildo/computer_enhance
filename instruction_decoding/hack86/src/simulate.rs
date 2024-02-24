@@ -170,6 +170,27 @@ impl CPU {
                             memory[address as usize] = bytes[0];
                             memory[(address + 1) as usize] = bytes[1];
                         }
+                        (
+                            RegisterMemory::RegisterAddress(src_name),
+                            RegisterMemory::Register(dest_name),
+                        ) => {
+                            let address = self.get_register(src_name).1;
+                            let value = u16::from_le_bytes([
+                                memory[address as usize],
+                                memory[(address + 1) as usize],
+                            ]);
+                            self.set_register(dest_name, value, true);
+                        }
+                        (
+                            RegisterMemory::Register(src_name),
+                            RegisterMemory::RegisterAddress(dest_name),
+                        ) => {
+                            let value = self.get_register(src_name).1;
+                            let address = self.get_register(dest_name).1;
+                            let bytes = value.to_le_bytes();
+                            memory[address as usize] = bytes[0];
+                            memory[(address + 1) as usize] = bytes[1];
+                        }
                         _ => todo!(),
                     },
                     decode::Mnemonic::ADD => match (src, dest) {
@@ -183,6 +204,23 @@ impl CPU {
                                 .overflowing_add(self.get_register(src_name).1)
                                 .0;
                             self.set_register(dest_name, new_value, true);
+                        }
+                        (
+                            RegisterMemory::Register(src_name),
+                            RegisterMemory::RegisterAddressDisplacement(dest_name, displacement),
+                        ) => {
+                            let a = self.get_register(src_name).1;
+                            let address = self.get_register(dest_name).1 + displacement;
+                            let b = u16::from_le_bytes([
+                                memory[address as usize],
+                                memory[(address + 1) as usize],
+                            ]);
+
+                            let value = a.overflowing_add(b).0;
+
+                            let bytes = value.to_le_bytes();
+                            memory[address as usize] = bytes[0];
+                            memory[(address + 1) as usize] = bytes[1];
                         }
                         _ => todo!(),
                     },

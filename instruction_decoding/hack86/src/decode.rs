@@ -206,6 +206,65 @@ pub struct Instruction {
     pub(crate) instruction_category: InstructionCategory,
 }
 
+impl Instruction {
+    pub fn clocks(&self) -> (u8, u8) {
+        match self.instruction_category {
+            InstructionCategory::RegisterMemoryAndRegister(
+                Mnemonic::MOV,
+                RegisterMemory::Register(_),
+                RegisterMemory::Register(_),
+            ) => (2, 0),
+            InstructionCategory::RegisterMemoryAndRegister(
+                Mnemonic::MOV,
+                RegisterMemory::DirectAddress(_),
+                RegisterMemory::Register(_),
+            ) => (8, 6),
+            InstructionCategory::RegisterMemoryAndRegister(
+                Mnemonic::MOV,
+                RegisterMemory::RegisterAddress(_),
+                RegisterMemory::Register(_),
+            ) => (8, 5),
+            InstructionCategory::RegisterMemoryAndRegister(
+                Mnemonic::MOV,
+                RegisterMemory::RegisterAddressDisplacement(_, displacement),
+                RegisterMemory::Register(_),
+            ) => (8, if displacement > 0 { 9 } else { 5 }),
+            InstructionCategory::RegisterMemoryAndRegister(
+                Mnemonic::MOV,
+                RegisterMemory::Register(_),
+                RegisterMemory::RegisterAddress(_),
+            ) => (9, 5),
+            InstructionCategory::RegisterMemoryAndRegister(
+                Mnemonic::MOV,
+                RegisterMemory::Register(_),
+                RegisterMemory::RegisterAddressDisplacement(_, displacement),
+            ) => (9, if displacement > 0 { 9 } else { 5 }),
+            InstructionCategory::RegisterMemoryAndRegister(
+                Mnemonic::ADD,
+                RegisterMemory::Register(_),
+                RegisterMemory::Register(_),
+            ) => (3, 0),
+            InstructionCategory::RegisterMemoryAndRegister(
+                Mnemonic::ADD,
+                RegisterMemory::Register(_),
+                RegisterMemory::RegisterAddressDisplacement(_, displacement),
+            ) => (16, if displacement > 0 { 9 } else { 5 }),
+            InstructionCategory::RegisterMemoryAndRegister(_, _, _) => todo!(),
+            InstructionCategory::ImmediateToRegister(Mnemonic::MOV, _, _) => (4, 0),
+            InstructionCategory::ImmediateToRegister(_, _, _) => todo!(),
+            InstructionCategory::ImmediateToRegisterMemory(
+                Mnemonic::ADD,
+                _,
+                RegisterMemory::Register(_),
+                _,
+            ) => (4, 0),
+            InstructionCategory::ImmediateToRegisterMemory(_, _, _, _) => todo!(),
+            InstructionCategory::ImmediateToAccumulator(_, _, _) => todo!(),
+            InstructionCategory::Jump(_, _) => todo!(),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct RegMemoryWithRegisterToEitherOperands {
     instruction_length: u8,

@@ -40,6 +40,8 @@ pub struct CPU {
     ip: u16,
 
     flags: Flags,
+
+    cycle_count: u32,
 }
 
 impl Hack86 {
@@ -95,11 +97,31 @@ impl CPU {
                 sf: false,
                 zf: false,
             },
+
+            cycle_count: 0,
         }
     }
 
     pub fn execute(&mut self, instruction: &Instruction, memory: &mut [u8; 65536]) {
         print!("{} ;", instruction.instruction_category);
+
+        let clocks = instruction.clocks();
+        self.cycle_count += u32::from(clocks.0 + clocks.1);
+        if clocks.1 > 0 {
+            print!(
+                " Clocks: +{} = {} ({} + {}ea) |",
+                (clocks.0 + clocks.1),
+                self.cycle_count,
+                clocks.0,
+                clocks.1
+            );
+        } else {
+            print!(
+                " Clocks: +{} = {} |",
+                (clocks.0 + clocks.1),
+                self.cycle_count
+            );
+        }
 
         let original_flags = self.flags.clone();
 

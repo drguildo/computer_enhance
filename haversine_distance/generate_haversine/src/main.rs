@@ -26,9 +26,14 @@ fn main() -> ExitCode {
 
     let mut haversines: Vec<f64> = vec![];
 
-    let output_filename = format!("data_{}_flex.json", pair_count);
-    let file = std::fs::File::create(output_filename).expect("Unable to create file");
-    let mut buffered_writer = std::io::BufWriter::new(file);
+    let json_filename = format!("data_{}_flex.json", pair_count);
+    let json_file = std::fs::File::create(json_filename).expect("Unable to create JSON file");
+    let mut json_writer = std::io::BufWriter::new(json_file);
+
+    let answers_filename = format!("data_{}_haveranswer.f64", pair_count);
+    let answers_file =
+        std::fs::File::create(answers_filename).expect("Unable to create answers file");
+    let mut answers_writer = std::io::BufWriter::new(answers_file);
 
     let coords = if method == "uniform" {
         generate_coordinates_uniform(pair_count)
@@ -37,14 +42,17 @@ fn main() -> ExitCode {
         generate_coordinates_cluster(pair_count, &clusters)
     };
 
-    buffered_writer
+    json_writer
         .write_all("{\"pairs\":[\n".as_bytes())
         .expect("Failed to write to file");
     for (i, coord) in coords.iter().enumerate() {
         let haversine = reference_haversine(coord.0.x, coord.0.y, coord.1.x, coord.1.y);
         haversines.push(haversine);
+        answers_writer
+            .write(&haversine.to_le_bytes())
+            .expect("Failed to write to answers file");
 
-        buffered_writer
+        json_writer
             .write_all(
                 format!(
                     "    {{\"x0\":{}, \"y0\":{}, \"x1\":{}, \"y1\":{}}}",
@@ -55,21 +63,25 @@ fn main() -> ExitCode {
             .expect("Failed to write to file");
 
         if i == coords.len() - 1 {
-            buffered_writer
+            json_writer
                 .write_all("\n".as_bytes())
                 .expect("Failed to write to file");
         } else {
-            buffered_writer
+            json_writer
                 .write_all(",\n".as_bytes())
                 .expect("Failed to write to file");
         }
     }
-    buffered_writer
+    json_writer
         .write_all("]}".as_bytes())
         .expect("Failed to write to file");
 
     let sum: f64 = haversines.iter().sum();
     let avg = sum / haversines.len() as f64;
+
+    answers_writer
+        .write(&avg.to_le_bytes())
+        .expect("Failed to write average sum");
 
     println!("Method: {}", method);
     println!("Random seed: {}", random_seed);

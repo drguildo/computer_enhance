@@ -30,9 +30,10 @@ fn main() -> ExitCode {
     let json_file = std::fs::File::create(json_filename).expect("Unable to create JSON file");
     let mut json_writer = std::io::BufWriter::new(json_file);
 
-    let answer_filename = format!("data_{}_haveranswer.f64", pair_count);
-    let mut answer_file =
-        std::fs::File::create(answer_filename).expect("Unable to create answers file");
+    let answers_filename = format!("data_{}_haveranswer.f64", pair_count);
+    let answers_file =
+        std::fs::File::create(answers_filename).expect("Unable to create answers file");
+    let mut answers_writer = std::io::BufWriter::new(answers_file);
 
     let coords = if method == "uniform" {
         generate_coordinates_uniform(pair_count)
@@ -47,6 +48,9 @@ fn main() -> ExitCode {
     for (i, coord) in coords.iter().enumerate() {
         let haversine = reference_haversine(coord.0.x, coord.0.y, coord.1.x, coord.1.y);
         haversines.push(haversine);
+        answers_writer
+            .write(&haversine.to_le_bytes())
+            .expect("Failed to write to answers file");
 
         json_writer
             .write_all(
@@ -75,7 +79,7 @@ fn main() -> ExitCode {
     let sum: f64 = haversines.iter().sum();
     let avg = sum / haversines.len() as f64;
 
-    answer_file
+    answers_writer
         .write(&avg.to_le_bytes())
         .expect("Failed to write average sum");
 

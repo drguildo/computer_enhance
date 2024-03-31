@@ -6,11 +6,17 @@ use crate::json::parse_str;
 
 use std::env;
 use std::fs;
+
 use std::io::Read;
 use std::os::windows::fs::MetadataExt;
 
 #[derive(Debug)]
 struct Pair(f64, f64, f64, f64);
+
+struct RefAnswers {
+    answers: Vec<f64>,
+    sum: f64,
+}
 
 fn main() {
     let args = env::args().collect::<Vec<String>>();
@@ -21,7 +27,7 @@ fn main() {
     }
     let json_path = &args[1];
 
-    let pairs = get_pairs_from_json(json_path);
+    let pairs = read_json_pairs_file(json_path);
     let pairs_count = pairs.len();
 
     let mut haversines: Vec<f64> = vec![];
@@ -42,26 +48,17 @@ fn main() {
     println!("Haversine sum: {}", avg);
 
     if args.len() > 2 {
-        let answer_path = &args[2];
-        let mut answer_file = fs::File::open(answer_path).expect("Failed to open answers file");
-
-        let mut buffer = [0; 8];
-        let n = answer_file
-            .read(&mut buffer)
-            .expect("Failed to read answer");
-        if n != 8 {
-            panic!("Invalid number of bytes returned {} when reading answer", n);
-        }
-        let answer: f64 = f64::from_le_bytes(buffer);
+        let answers_path = &args[2];
+        let answers = read_answers(answers_path);
 
         println!("");
         println!("Validation:");
-        println!("Reference sum: {}", answer);
-        println!("Difference: {}", avg - answer);
+        println!("Reference sum: {}", answers.sum);
+        println!("Difference: {}", avg - answers.sum);
     }
 }
 
-fn get_pairs_from_json(json_path: &str) -> Vec<Pair> {
+fn read_json_pairs_file(json_path: &str) -> Vec<Pair> {
     let mut pairs: Vec<Pair> = vec![];
 
     let json_str = fs::read_to_string(json_path).unwrap();
@@ -83,6 +80,34 @@ fn get_pairs_from_json(json_path: &str) -> Vec<Pair> {
     }
 
     pairs
+}
+
+fn read_answers(answers_path: &str) -> RefAnswers {
+    let answers_file = fs::File::open(answers_path).expect("Failed to open answers file");
+    let mut answers_reader = std::io::BufReader::new(answers_file);
+
+    let mut answers: Vec<f64> = vec![];
+
+    let mut buffer = [0; 8];
+    loop {
+        let num_bytes_read = answers_reader
+            .read(&mut buffer)
+            .expect("Failed to read answers");
+        if num_bytes_read == 0 {
+            break;
+        }
+        if num_bytes_read != buffer.len() {
+            panic!("Failed to fill answer buffer");
+        }
+        let answer: f64 = f64::from_le_bytes(buffer);
+        answers.push(answer);
+    }
+
+    if let Some(sum) = answers.pop() {
+        RefAnswers { answers, sum }
+    } else {
+        panic!("Answers file is empty")
+    }
 }
 
 fn number_to_f64(number: &Json) -> f64 {

@@ -7,18 +7,35 @@ use crate::json::parse_str;
 use std::env;
 use std::fs;
 
-use std::io::Read;
+// use std::io::Read;
 use std::os::windows::fs::MetadataExt;
 
 #[derive(Debug)]
 struct Pair(f64, f64, f64, f64);
 
-struct RefAnswers {
-    _answers: Vec<f64>,
-    sum: f64,
+// struct RefAnswers {
+//     _answers: Vec<f64>,
+//     sum: f64,
+// }
+
+struct PerfStats {
+    startup: u64,
+    read: u64,
+    parse: u64,
+    sum: u64,
+    misc_output: u64,
 }
 
 fn main() {
+    let mut perf_stats = PerfStats {
+        startup: 0,
+        read: 0,
+        parse: 0,
+        sum: 0,
+        misc_output: 0,
+    };
+
+    let mut cpu_timer_start = profile::read_cpu_timer();
     let args = env::args().collect::<Vec<String>>();
     if args.len() < 2 {
         eprintln!("Usage: {} [haversine_input.json]", &args[0]);
@@ -26,10 +43,17 @@ fn main() {
         return;
     }
     let json_path = &args[1];
+    perf_stats.startup = profile::read_cpu_timer() - cpu_timer_start;
 
-    let pairs = read_json_pairs_file(json_path);
-    let pairs_count = pairs.len();
+    cpu_timer_start = profile::read_cpu_timer();
+    let json = fs::read_to_string(json_path).unwrap();
+    perf_stats.read = profile::read_cpu_timer() - cpu_timer_start;
 
+    cpu_timer_start = profile::read_cpu_timer();
+    let pairs = parse_json(&json);
+    perf_stats.parse = profile::read_cpu_timer() - cpu_timer_start;
+
+    cpu_timer_start = profile::read_cpu_timer();
     let mut haversines: Vec<f64> = vec![];
     for pair in &pairs {
         let haversine = reference_haversine(pair.0, pair.1, pair.2, pair.3);
@@ -37,32 +61,75 @@ fn main() {
     }
     let sum: f64 = haversines.iter().sum();
     let avg = sum / haversines.len() as f64;
+    perf_stats.sum = profile::read_cpu_timer() - cpu_timer_start;
 
+    cpu_timer_start = profile::read_cpu_timer();
     println!(
         "Input size: {}",
         fs::metadata(json_path)
             .expect("Failed to read JSON file metadata")
             .file_size()
     );
-    println!("Pair count: {}", pairs_count);
+    println!("Pair count: {}", pairs.len());
     println!("Haversine sum: {}", avg);
 
-    if args.len() > 2 {
-        let answers_path = &args[2];
-        let answers = read_answers(answers_path);
+    // if args.len() > 2 {
+    //     let answers_path = &args[2];
+    //     let answers = read_answers(answers_path);
 
-        println!("");
-        println!("Validation:");
-        println!("Reference sum: {}", answers.sum);
-        println!("Difference: {}", avg - answers.sum);
+    //     println!("");
+    //     println!("Validation:");
+    //     println!("Reference sum: {}", answers.sum);
+    //     println!("Difference: {}", avg - answers.sum);
+    // }
+    perf_stats.misc_output = profile::read_cpu_timer() - cpu_timer_start;
+
+    fn percent(numerator: u64, denominator: u64) -> String {
+        format!("{:.2}%", (numerator as f64 / denominator as f64) * 100_f64)
     }
+
+    let cpu_freq = profile::estimate_cpu_timer_freq(None);
+    let total_cpu_time_taken = perf_stats.startup
+        + perf_stats.read
+        + perf_stats.parse
+        + perf_stats.sum
+        + perf_stats.misc_output;
+    println!(
+        "\nTotal time: {}ms (CPU freq {})",
+        total_cpu_time_taken / (cpu_freq / 1000),
+        cpu_freq
+    );
+    println!(
+        "  Startup: {} ({})",
+        perf_stats.startup,
+        percent(perf_stats.startup, total_cpu_time_taken)
+    );
+    println!(
+        "  Read: {} ({})",
+        perf_stats.read,
+        percent(perf_stats.read, total_cpu_time_taken)
+    );
+    println!(
+        "  Parse: {} ({})",
+        perf_stats.parse,
+        percent(perf_stats.parse, total_cpu_time_taken)
+    );
+    println!(
+        "  Sum: {} ({})",
+        perf_stats.sum,
+        percent(perf_stats.sum, total_cpu_time_taken)
+    );
+    println!(
+        "  MiscOutput: {} ({})",
+        perf_stats.misc_output,
+        percent(perf_stats.misc_output, total_cpu_time_taken)
+    );
 }
 
-fn read_json_pairs_file(json_path: &str) -> Vec<Pair> {
+fn parse_json(json: &str) -> Vec<Pair> {
     let mut pairs: Vec<Pair> = vec![];
 
-    let json_str = fs::read_to_string(json_path).unwrap();
-    let json = parse_str(json_str.as_str()).expect("Failed to parse JSON");
+    let json = parse_str(json).expect("Failed to parse JSON");
     if let Json::Object(root) = json {
         if let Some(Json::Array(array)) = root.get("pairs") {
             for pair in array {
@@ -82,36 +149,36 @@ fn read_json_pairs_file(json_path: &str) -> Vec<Pair> {
     pairs
 }
 
-fn read_answers(answers_path: &str) -> RefAnswers {
-    let answers_file = fs::File::open(answers_path).expect("Failed to open answers file");
-    let mut answers_reader = std::io::BufReader::new(answers_file);
+// fn read_answers(answers_path: &str) -> RefAnswers {
+//     let answers_file = fs::File::open(answers_path).expect("Failed to open answers file");
+//     let mut answers_reader = std::io::BufReader::new(answers_file);
 
-    let mut answers: Vec<f64> = vec![];
+//     let mut answers: Vec<f64> = vec![];
 
-    let mut buffer = [0; 8];
-    loop {
-        let num_bytes_read = answers_reader
-            .read(&mut buffer)
-            .expect("Failed to read answers");
-        if num_bytes_read == 0 {
-            break;
-        }
-        if num_bytes_read != buffer.len() {
-            panic!("Failed to fill answer buffer");
-        }
-        let answer: f64 = f64::from_le_bytes(buffer);
-        answers.push(answer);
-    }
+//     let mut buffer = [0; 8];
+//     loop {
+//         let num_bytes_read = answers_reader
+//             .read(&mut buffer)
+//             .expect("Failed to read answers");
+//         if num_bytes_read == 0 {
+//             break;
+//         }
+//         if num_bytes_read != buffer.len() {
+//             panic!("Failed to fill answer buffer");
+//         }
+//         let answer: f64 = f64::from_le_bytes(buffer);
+//         answers.push(answer);
+//     }
 
-    if let Some(sum) = answers.pop() {
-        RefAnswers {
-            _answers: answers,
-            sum,
-        }
-    } else {
-        panic!("Answers file is empty")
-    }
-}
+//     if let Some(sum) = answers.pop() {
+//         RefAnswers {
+//             _answers: answers,
+//             sum,
+//         }
+//     } else {
+//         panic!("Answers file is empty")
+//     }
+// }
 
 fn number_to_f64(number: &Json) -> f64 {
     if let Json::Number {

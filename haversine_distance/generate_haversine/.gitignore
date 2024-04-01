@@ -1,1 +1,4 @@
 /target
+
+*.json
+*.f64

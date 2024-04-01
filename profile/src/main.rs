@@ -16,7 +16,7 @@ fn main() {
     let os_start = profile::read_os_timer();
     let mut os_end: u64 = 0;
     let mut os_elapsed: u64 = 0;
-    let os_wait_time = os_freq * milliseconds_to_wait / 1000;
+    let os_wait_time = milliseconds_to_wait * (os_freq / 1000);
     while os_elapsed < os_wait_time {
         os_end = profile::read_os_timer();
         os_elapsed = os_end - os_start;
@@ -25,7 +25,7 @@ fn main() {
     let cpu_end = profile::read_cpu_timer();
     let cpu_elapsed = cpu_end - cpu_start;
     let cpu_freq: u64 = if os_elapsed > 0 {
-        os_freq * cpu_elapsed / os_elapsed
+        cpu_elapsed * (os_freq / os_elapsed)
     } else {
         0
     };

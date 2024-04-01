@@ -40,5 +40,9 @@ fn main() {
         "  CPU Timer: {} -> {} = {} elapsed",
         cpu_start, cpu_end, cpu_elapsed
     );
-    println!("   CPU Freq: {} (guessed)", cpu_freq);
+    println!(
+        "   CPU Freq: {}, {:.2}GHz (guessed)",
+        cpu_freq,
+        cpu_freq as f64 / 1000000000_f64
+    );
 }

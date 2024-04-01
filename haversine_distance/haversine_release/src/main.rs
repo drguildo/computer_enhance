@@ -14,7 +14,7 @@ use std::os::windows::fs::MetadataExt;
 struct Pair(f64, f64, f64, f64);
 
 struct RefAnswers {
-    answers: Vec<f64>,
+    _answers: Vec<f64>,
     sum: f64,
 }
 
@@ -104,7 +104,10 @@ fn read_answers(answers_path: &str) -> RefAnswers {
     }
 
     if let Some(sum) = answers.pop() {
-        RefAnswers { answers, sum }
+        RefAnswers {
+            _answers: answers,
+            sum,
+        }
     } else {
         panic!("Answers file is empty")
     }

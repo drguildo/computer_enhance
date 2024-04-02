@@ -19,23 +19,22 @@ struct Pair(f64, f64, f64, f64);
 // }
 
 struct PerfStats {
-    startup: u64,
+    init: u64,
     read: u64,
     parse: u64,
     sum: u64,
-    misc_output: u64,
+    end: u64,
 }
 
 fn main() {
     let mut perf_stats = PerfStats {
-        startup: 0,
+        init: 0,
         read: 0,
         parse: 0,
         sum: 0,
-        misc_output: 0,
+        end: 0,
     };
 
-    let mut cpu_timer_start = profile::read_cpu_timer();
     let args = env::args().collect::<Vec<String>>();
     if args.len() < 2 {
         eprintln!("Usage: {} [haversine_input.json]", &args[0]);
@@ -43,17 +42,15 @@ fn main() {
         return;
     }
     let json_path = &args[1];
-    perf_stats.startup = profile::read_cpu_timer() - cpu_timer_start;
 
-    cpu_timer_start = profile::read_cpu_timer();
+    perf_stats.init = profile::read_cpu_timer();
+
     let json = fs::read_to_string(json_path).unwrap();
-    perf_stats.read = profile::read_cpu_timer() - cpu_timer_start;
+    perf_stats.read = profile::read_cpu_timer();
 
-    cpu_timer_start = profile::read_cpu_timer();
     let pairs = parse_json(&json);
-    perf_stats.parse = profile::read_cpu_timer() - cpu_timer_start;
+    perf_stats.parse = profile::read_cpu_timer();
 
-    cpu_timer_start = profile::read_cpu_timer();
     let mut haversines: Vec<f64> = vec![];
     for pair in &pairs {
         let haversine = reference_haversine(pair.0, pair.1, pair.2, pair.3);
@@ -61,9 +58,8 @@ fn main() {
     }
     let sum: f64 = haversines.iter().sum();
     let avg = sum / haversines.len() as f64;
-    perf_stats.sum = profile::read_cpu_timer() - cpu_timer_start;
+    perf_stats.sum = profile::read_cpu_timer();
 
-    cpu_timer_start = profile::read_cpu_timer();
     println!(
         "Input size: {}",
         fs::metadata(json_path)
@@ -82,47 +78,33 @@ fn main() {
     //     println!("Reference sum: {}", answers.sum);
     //     println!("Difference: {}", avg - answers.sum);
     // }
-    perf_stats.misc_output = profile::read_cpu_timer() - cpu_timer_start;
+    perf_stats.end = profile::read_cpu_timer();
 
     fn percent(numerator: u64, denominator: u64) -> String {
         format!("{:.2}%", (numerator as f64 / denominator as f64) * 100_f64)
     }
 
     let cpu_freq = profile::estimate_cpu_timer_freq(None);
-    let total_cpu_time_taken = perf_stats.startup
-        + perf_stats.read
-        + perf_stats.parse
-        + perf_stats.sum
-        + perf_stats.misc_output;
+    let total_cpu_time_taken = perf_stats.end - perf_stats.init;
     println!(
         "\nTotal time: {}ms (CPU freq {})",
         total_cpu_time_taken / (cpu_freq / 1000),
         cpu_freq
     );
     println!(
-        "  Startup: {} ({})",
-        perf_stats.startup,
-        percent(perf_stats.startup, total_cpu_time_taken)
-    );
-    println!(
         "  Read: {} ({})",
-        perf_stats.read,
-        percent(perf_stats.read, total_cpu_time_taken)
+        perf_stats.read - perf_stats.init,
+        percent(perf_stats.read - perf_stats.init, total_cpu_time_taken)
     );
     println!(
         "  Parse: {} ({})",
-        perf_stats.parse,
-        percent(perf_stats.parse, total_cpu_time_taken)
+        perf_stats.parse - perf_stats.read,
+        percent(perf_stats.parse - perf_stats.read, total_cpu_time_taken)
     );
     println!(
         "  Sum: {} ({})",
-        perf_stats.sum,
-        percent(perf_stats.sum, total_cpu_time_taken)
-    );
-    println!(
-        "  MiscOutput: {} ({})",
-        perf_stats.misc_output,
-        percent(perf_stats.misc_output, total_cpu_time_taken)
+        perf_stats.sum - perf_stats.parse,
+        percent(perf_stats.sum - perf_stats.parse, total_cpu_time_taken)
     );
 }
 
